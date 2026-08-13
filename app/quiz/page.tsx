@@ -278,6 +278,37 @@ export default function QuizPage() {
     mode: StudyMode
   ) {
     setStudyMode(mode);
+
+    // 順番に解く場合は、問題数選択を飛ばして
+    // 選択した章の全問をそのまま開始する
+    if (mode === "order") {
+      if (!selectedChapter) {
+        return;
+      }
+
+      const filtered =
+        questions.filter(
+          (question) =>
+            question.id >=
+              selectedChapter.start &&
+            question.id <=
+              selectedChapter.end
+        );
+
+      setQuestionCount("all");
+      setQuizQuestions(filtered);
+      setCurrentIndex(0);
+      setSelected(null);
+      setScore(0);
+      setFinished(false);
+      setStreak(0);
+      setBestStreak(0);
+      setAnswerEffect(null);
+
+      return;
+    }
+
+    // シャッフルのときだけ問題数選択へ進む
     setQuestionCount(null);
   }
 
@@ -963,7 +994,10 @@ export default function QuizPage() {
   // 出題数選択
   // ─────────────────────────────
 
-  if (!questionCount) {
+  if (
+    studyMode === "shuffle" &&
+    !questionCount
+  ) {
     const totalCount =
       selectedChapter.end -
       selectedChapter.start +
@@ -994,10 +1028,7 @@ export default function QuizPage() {
             </h1>
 
             <p className="text-sm text-zinc-500">
-              {studyMode ===
-              "order"
-                ? "📖 順番に解く"
-                : "🔀 シャッフルで解く"}
+              🔀 シャッフルで解く
             </p>
 
           </div>
@@ -1162,14 +1193,16 @@ export default function QuizPage() {
               同じ条件でもう一度
             </button>
 
-            <button
-              onClick={
-                backToCountSelection
-              }
-              className="w-full rounded-2xl bg-zinc-800 py-4 font-semibold"
-            >
-              出題数を変更
-            </button>
+            {studyMode === "shuffle" && (
+              <button
+                onClick={
+                  backToCountSelection
+                }
+                className="w-full rounded-2xl bg-zinc-800 py-4 font-semibold"
+              >
+                出題数を変更
+              </button>
+            )}
 
             <button
               onClick={

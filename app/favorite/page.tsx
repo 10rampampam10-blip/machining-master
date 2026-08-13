@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { questions, Question } from "../data/question";
 
 type Answer = "○" | "×";
+type SessionLength = 5 | 10 | 20 | "all";
 
 type QuestionStats = {
   attempts: number;
@@ -13,18 +14,34 @@ type QuestionStats = {
 
 type StatsMap = Record<number, QuestionStats>;
 
+function shuffleQuestions(list: Question[]) {
+  const shuffled = [...list];
+
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  return shuffled;
+}
+
 export default function FavoritePage() {
-  const [favoriteQuestions, setFavoriteQuestions] = useState<Question[]>([]);
+  const [allFavoriteQuestions, setAllFavoriteQuestions] = useState<Question[]>([]);
+  const [sessionQuestions, setSessionQuestions] = useState<Question[]>([]);
+  const [selectedLength, setSelectedLength] = useState<SessionLength | null>(null);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState<Answer | null>(null);
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("favoriteQuestions");
 
     if (!saved) {
-      setFavoriteQuestions([]);
+      setAllFavoriteQuestions([]);
+      setLoaded(true);
       return;
     }
 
@@ -35,16 +52,51 @@ export default function FavoritePage() {
         ids.includes(question.id)
       );
 
-      setFavoriteQuestions(filtered);
+      setAllFavoriteQuestions(filtered);
     } catch {
-      setFavoriteQuestions([]);
+      setAllFavoriteQuestions([]);
     }
+
+    setLoaded(true);
   }, []);
+
+  function startSession(length: SessionLength) {
+    if (allFavoriteQuestions.length === 0) {
+      return;
+    }
+
+    const shuffled = shuffleQuestions(allFavoriteQuestions);
+
+    const actualLength =
+      length === "all"
+        ? shuffled.length
+        : Math.min(length, shuffled.length);
+
+    const pickedQuestions =
+      length === "all"
+        ? shuffled
+        : shuffled.slice(0, actualLength);
+
+    setSelectedLength(length);
+    setSessionQuestions(pickedQuestions);
+    setCurrentIndex(0);
+    setSelected(null);
+    setScore(0);
+    setFinished(false);
+  }
 
   function saveAnswer(questionId: number, correct: boolean) {
     const saved = localStorage.getItem("questionStats");
 
-    const stats: StatsMap = saved ? JSON.parse(saved) : {};
+    let stats: StatsMap = {};
+
+    if (saved) {
+      try {
+        stats = JSON.parse(saved);
+      } catch {
+        stats = {};
+      }
+    }
 
     const current = stats[questionId] ?? {
       attempts: 0,
@@ -67,7 +119,7 @@ export default function FavoritePage() {
   function answerQuestion(answer: Answer) {
     if (selected !== null) return;
 
-    const question = favoriteQuestions[currentIndex];
+    const question = sessionQuestions[currentIndex];
 
     if (!question) return;
 
@@ -83,7 +135,7 @@ export default function FavoritePage() {
   }
 
   function goNext() {
-    if (currentIndex < favoriteQuestions.length - 1) {
+    if (currentIndex < sessionQuestions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
       setSelected(null);
     } else {
@@ -94,35 +146,76 @@ export default function FavoritePage() {
   function removeFavorite(questionId: number) {
     const saved = localStorage.getItem("favoriteQuestions");
 
-    const ids: number[] = saved ? JSON.parse(saved) : [];
+    let ids: number[] = [];
 
-    const updated = ids.filter((id) => id !== questionId);
+    if (saved) {
+      try {
+        ids = JSON.parse(saved);
+      } catch {
+        ids = [];
+      }
+    }
+
+    const updatedIds = ids.filter(
+      (id) => id !== questionId
+    );
 
     localStorage.setItem(
       "favoriteQuestions",
-      JSON.stringify(updated)
+      JSON.stringify(updatedIds)
     );
 
-    const updatedQuestions = favoriteQuestions.filter(
+    const updatedAll = allFavoriteQuestions.filter(
       (question) => question.id !== questionId
     );
 
-    setFavoriteQuestions(updatedQuestions);
+    setAllFavoriteQuestions(updatedAll);
 
-    if (updatedQuestions.length === 0) {
+    const updatedSession = sessionQuestions.filter(
+      (question) => question.id !== questionId
+    );
+
+    setSessionQuestions(updatedSession);
+
+    if (updatedSession.length === 0) {
       setCurrentIndex(0);
       setSelected(null);
+      setFinished(false);
+      setSelectedLength(null);
       return;
     }
 
-    if (currentIndex >= updatedQuestions.length) {
-      setCurrentIndex(updatedQuestions.length - 1);
+    if (currentIndex >= updatedSession.length) {
+      setCurrentIndex(updatedSession.length - 1);
     }
 
     setSelected(null);
   }
 
-  if (favoriteQuestions.length === 0) {
+  function restartSession() {
+    if (!selectedLength) return;
+
+    startSession(selectedLength);
+  }
+
+  function backToLengthSelection() {
+    setSelectedLength(null);
+    setSessionQuestions([]);
+    setCurrentIndex(0);
+    setSelected(null);
+    setScore(0);
+    setFinished(false);
+  }
+
+  if (!loaded) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
+        読み込み中...
+      </main>
+    );
+  }
+
+  if (allFavoriteQuestions.length === 0) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 text-white">
         <div className="w-full max-w-xl text-center">
@@ -159,8 +252,118 @@ export default function FavoritePage() {
     );
   }
 
+  if (!selectedLength) {
+    return (
+      <main className="min-h-screen bg-zinc-950 px-6 py-10 text-white">
+        <div className="mx-auto w-full max-w-xl">
+
+          <div className="mb-8 text-center">
+
+            <p className="mb-2 text-sm text-zinc-400">
+              ★ 要復習問題
+            </p>
+
+            <h1 className="mb-3 text-3xl font-bold">
+              何問解く？
+            </h1>
+
+            <p className="text-zinc-400">
+              登録した要復習問題から
+              ランダムに出題します。
+            </p>
+
+            <p className="mt-3 text-sm font-semibold">
+              現在の要復習問題：
+              {allFavoriteQuestions.length}問
+            </p>
+
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+
+            <button
+              onClick={() => startSession(5)}
+              className="rounded-3xl bg-zinc-900 p-7 transition hover:scale-105 hover:bg-zinc-800"
+            >
+              <p className="text-3xl font-bold">
+                5
+              </p>
+
+              <p className="mt-1 text-sm text-zinc-400">
+                問
+              </p>
+            </button>
+
+            <button
+              onClick={() => startSession(10)}
+              className="rounded-3xl bg-zinc-900 p-7 transition hover:scale-105 hover:bg-zinc-800"
+            >
+              <p className="text-3xl font-bold">
+                10
+              </p>
+
+              <p className="mt-1 text-sm text-zinc-400">
+                問
+              </p>
+            </button>
+
+            <button
+              onClick={() => startSession(20)}
+              className="rounded-3xl bg-zinc-900 p-7 transition hover:scale-105 hover:bg-zinc-800"
+            >
+              <p className="text-3xl font-bold">
+                20
+              </p>
+
+              <p className="mt-1 text-sm text-zinc-400">
+                問
+              </p>
+            </button>
+
+            <button
+              onClick={() => startSession("all")}
+              className="rounded-3xl bg-white p-7 text-black transition hover:scale-105"
+            >
+              <p className="text-2xl font-bold">
+                全問
+              </p>
+
+              <p className="mt-1 text-sm text-zinc-600">
+                {allFavoriteQuestions.length}問
+              </p>
+            </button>
+
+          </div>
+
+          <div className="mt-6 rounded-2xl bg-zinc-900 p-4">
+            <p className="text-sm leading-6 text-zinc-400">
+              💡 選んだ問題数より登録数が少ない場合は、
+              登録されている問題をすべて出題します。
+            </p>
+          </div>
+
+          <a
+            href="/"
+            className="mt-8 block w-full rounded-2xl bg-zinc-800 py-4 text-center font-semibold"
+          >
+            ホームへ戻る
+          </a>
+
+        </div>
+      </main>
+    );
+  }
+
+  if (sessionQuestions.length === 0) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
+        読み込み中...
+      </main>
+    );
+  }
+
   if (finished) {
-    const total = favoriteQuestions.length;
+    const total = sessionQuestions.length;
 
     const accuracy =
       total > 0
@@ -168,7 +371,7 @@ export default function FavoritePage() {
         : 0;
 
     return (
-      <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 text-white">
+      <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 py-10 text-white">
         <div className="w-full max-w-xl text-center">
 
           <p className="mb-2 text-sm text-zinc-400">
@@ -195,12 +398,19 @@ export default function FavoritePage() {
 
           </div>
 
-          <a
-            href="/favorite"
+          <button
+            onClick={restartSession}
             className="block w-full rounded-2xl bg-white py-4 font-semibold text-black"
           >
-            もう一度解く
-          </a>
+            同じ問題数でもう一度
+          </button>
+
+          <button
+            onClick={backToLengthSelection}
+            className="mt-3 w-full rounded-2xl bg-zinc-800 py-4 font-semibold"
+          >
+            問題数を変更
+          </button>
 
           <a
             href="/"
@@ -214,7 +424,7 @@ export default function FavoritePage() {
     );
   }
 
-  const question = favoriteQuestions[currentIndex];
+  const question = sessionQuestions[currentIndex];
 
   const isCorrect =
     selected === question.answer;
@@ -230,7 +440,7 @@ export default function FavoritePage() {
           </span>
 
           <span>
-            {currentIndex + 1} / {favoriteQuestions.length}
+            {currentIndex + 1} / {sessionQuestions.length}
           </span>
 
         </div>
@@ -241,7 +451,7 @@ export default function FavoritePage() {
             style={{
               width: `${
                 ((currentIndex + 1) /
-                  favoriteQuestions.length) *
+                  sessionQuestions.length) *
                 100
               }%`,
             }}
@@ -315,7 +525,7 @@ export default function FavoritePage() {
               className="w-full rounded-2xl bg-white py-4 font-semibold text-black"
             >
               {currentIndex <
-              favoriteQuestions.length - 1
+              sessionQuestions.length - 1
                 ? "次の問題へ"
                 : "結果を見る"}
             </button>

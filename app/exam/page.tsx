@@ -4,6 +4,7 @@ import { useState } from "react";
 import { questions, Question } from "../data/question";
 
 type Answer = "○" | "×";
+type ExamSelection = Answer | "分からない";
 type ExamLength = 10 | 20 | 30 | 40;
 
 type QuestionStats = {
@@ -16,7 +17,7 @@ type StatsMap = Record<number, QuestionStats>;
 
 type ExamAnswer = {
   question: Question;
-  selected: Answer;
+  selected: ExamSelection;
   correct: boolean;
 };
 
@@ -27,14 +28,12 @@ export default function ExamPage() {
   const [examQuestions, setExamQuestions] =
     useState<Question[]>([]);
 
-  const [currentIndex, setCurrentIndex] =
-    useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const [answers, setAnswers] =
     useState<ExamAnswer[]>([]);
 
-  const [finished, setFinished] =
-    useState(false);
+  const [finished, setFinished] = useState(false);
 
   // ─────────────────────────────
   // シャッフル
@@ -44,9 +43,7 @@ export default function ExamPage() {
     const shuffled = [...list];
 
     for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(
-        Math.random() * (i + 1)
-      );
+      const j = Math.floor(Math.random() * (i + 1));
 
       [shuffled[i], shuffled[j]] = [
         shuffled[j],
@@ -62,8 +59,7 @@ export default function ExamPage() {
   // ─────────────────────────────
 
   function startExam(length: ExamLength) {
-    const shuffled =
-      shuffleQuestions(questions);
+    const shuffled = shuffleQuestions(questions);
 
     const selectedQuestions =
       shuffled.slice(0, length);
@@ -104,16 +100,13 @@ export default function ExamPage() {
       };
 
     stats[questionId] = {
-      attempts:
-        current.attempts + 1,
+      attempts: current.attempts + 1,
 
       correct:
-        current.correct +
-        (correct ? 1 : 0),
+        current.correct + (correct ? 1 : 0),
 
       wrong:
-        current.wrong +
-        (correct ? 0 : 1),
+        current.wrong + (correct ? 0 : 1),
     };
 
     localStorage.setItem(
@@ -127,16 +120,16 @@ export default function ExamPage() {
   // ─────────────────────────────
 
   function answerQuestion(
-    selected: Answer
+    selected: ExamSelection
   ) {
     const currentQuestion =
       examQuestions[currentIndex];
 
-    if (!currentQuestion) {
-      return;
-    }
+    if (!currentQuestion) return;
 
+    // 「分からない」は必ず不正解
     const correct =
+      selected !== "分からない" &&
       selected === currentQuestion.answer;
 
     const newAnswer: ExamAnswer = {
@@ -145,13 +138,12 @@ export default function ExamPage() {
       correct,
     };
 
-    const updatedAnswers = [
-      ...answers,
+    setAnswers((prev) => [
+      ...prev,
       newAnswer,
-    ];
+    ]);
 
-    setAnswers(updatedAnswers);
-
+    // 「分からない」も不正解として保存
     saveAnswer(
       currentQuestion.id,
       correct
@@ -258,9 +250,7 @@ export default function ExamPage() {
           <div className="grid grid-cols-2 gap-4">
 
             <button
-              onClick={() =>
-                startExam(10)
-              }
+              onClick={() => startExam(10)}
               className="rounded-3xl bg-zinc-900 p-7 transition hover:scale-105 hover:bg-zinc-800"
             >
               <p className="text-3xl font-bold">
@@ -273,9 +263,7 @@ export default function ExamPage() {
             </button>
 
             <button
-              onClick={() =>
-                startExam(20)
-              }
+              onClick={() => startExam(20)}
               className="rounded-3xl bg-zinc-900 p-7 transition hover:scale-105 hover:bg-zinc-800"
             >
               <p className="text-3xl font-bold">
@@ -288,9 +276,7 @@ export default function ExamPage() {
             </button>
 
             <button
-              onClick={() =>
-                startExam(30)
-              }
+              onClick={() => startExam(30)}
               className="rounded-3xl bg-zinc-900 p-7 transition hover:scale-105 hover:bg-zinc-800"
             >
               <p className="text-3xl font-bold">
@@ -303,9 +289,7 @@ export default function ExamPage() {
             </button>
 
             <button
-              onClick={() =>
-                startExam(40)
-              }
+              onClick={() => startExam(40)}
               className="rounded-3xl bg-white p-7 text-black transition hover:scale-105"
             >
               <p className="text-3xl font-bold">
@@ -322,8 +306,10 @@ export default function ExamPage() {
           <div className="mt-6 rounded-2xl bg-zinc-900 p-4">
 
             <p className="text-sm leading-6 text-zinc-400">
-              💡 全597問からランダムに出題します。
+              💡 全問題からランダムに出題します。
               模擬試験中は正解・解説は表示されません。
+              分からない問題は「分からない」を選ぶと、
+              試験後に解説を確認できます。
             </p>
 
           </div>
@@ -350,8 +336,13 @@ export default function ExamPage() {
         (answer) => answer.correct
       ).length;
 
-    const total =
-      examQuestions.length;
+    const unknownCount =
+      answers.filter(
+        (answer) =>
+          answer.selected === "分からない"
+      ).length;
+
+    const total = examQuestions.length;
 
     const percentage =
       total > 0
@@ -360,7 +351,8 @@ export default function ExamPage() {
           )
         : 0;
 
-    const wrongAnswers =
+    // 不正解＋分からない
+    const reviewAnswers =
       answers.filter(
         (answer) => !answer.correct
       );
@@ -419,48 +411,118 @@ export default function ExamPage() {
                 </p>
               )}
 
+              {unknownCount > 0 && (
+                <div className="mt-6 rounded-2xl bg-zinc-800 p-4">
+
+                  <p className="text-sm text-zinc-400">
+                    要確認
+                  </p>
+
+                  <p className="mt-1 text-xl font-bold">
+                    分からない {unknownCount}問
+                  </p>
+
+                </div>
+              )}
+
             </div>
 
           </div>
 
-          {wrongAnswers.length > 0 ? (
+          {/* 要確認問題 */}
+
+          {reviewAnswers.length > 0 ? (
             <div className="mb-8">
 
-              <h2 className="mb-4 text-2xl font-bold">
-                間違えた問題
+              <h2 className="mb-2 text-2xl font-bold">
+                要確認・間違えた問題
               </h2>
+
+              <p className="mb-5 text-sm leading-6 text-zinc-400">
+                間違えた問題と「分からない」を選んだ問題です。
+                解説を確認して復習しよう。
+              </p>
 
               <div className="space-y-4">
 
-                {wrongAnswers.map(
+                {reviewAnswers.map(
                   (answer) => (
                     <div
-                      key={answer.question.id}
+                      key={
+                        answer.question.id
+                      }
                       className="rounded-2xl bg-zinc-900 p-5"
                     >
 
-                      <p className="mb-2 text-sm text-zinc-500">
-                        問題{" "}
-                        {answer.question.id}
+                      <div className="mb-3 flex items-center justify-between gap-3">
+
+                        <p className="text-sm text-zinc-500">
+                          問題{" "}
+                          {
+                            answer.question.id
+                          }
+                        </p>
+
+                        {answer.selected ===
+                        "分からない" ? (
+                          <span className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-semibold text-zinc-300">
+                            分からない
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-400">
+                            不正解
+                          </span>
+                        )}
+
+                      </div>
+
+                      <p className="mb-5 leading-7">
+                        {
+                          answer.question.text
+                        }
                       </p>
 
-                      <p className="mb-4 leading-7">
-                        {answer.question.text}
-                      </p>
+                      <div className="mb-4 rounded-2xl bg-zinc-800 p-4">
 
-                      <p className="mb-1">
-                        あなたの回答：
-                        {answer.selected}
-                      </p>
+                        <p className="mb-2 text-sm text-zinc-400">
+                          あなたの回答
+                        </p>
 
-                      <p className="mb-4">
-                        正解：
-                        {answer.question.answer}
-                      </p>
+                        <p className="text-lg font-bold">
+                          {
+                            answer.selected
+                          }
+                        </p>
 
-                      <p className="leading-7 text-zinc-300">
-                        {answer.question.explanation}
-                      </p>
+                      </div>
+
+                      <div className="mb-4 rounded-2xl bg-zinc-800 p-4">
+
+                        <p className="mb-2 text-sm text-zinc-400">
+                          正解
+                        </p>
+
+                        <p className="text-2xl font-bold">
+                          {
+                            answer.question.answer
+                          }
+                        </p>
+
+                      </div>
+
+                      <div>
+
+                        <p className="mb-2 text-sm font-semibold text-zinc-400">
+                          解説
+                        </p>
+
+                        <p className="leading-7 text-zinc-300">
+                          {
+                            answer.question.explanation
+                          }
+                        </p>
+
+                      </div>
 
                     </div>
                   )
@@ -474,6 +536,10 @@ export default function ExamPage() {
 
               <p className="text-2xl font-bold">
                 🎉 全問正解！
+              </p>
+
+              <p className="mt-2 text-sm text-zinc-400">
+                分からない問題もありませんでした。
               </p>
 
             </div>
@@ -570,6 +636,8 @@ export default function ExamPage() {
 
         </div>
 
+        {/* 進捗 */}
+
         <div className="mb-6 h-2 overflow-hidden rounded-full bg-zinc-800">
 
           <div
@@ -597,7 +665,9 @@ export default function ExamPage() {
           正しいと思う方を選択してください
         </p>
 
-        <div className="grid grid-cols-2 gap-4">
+        {/* ○ × */}
+
+        <div className="mb-4 grid grid-cols-2 gap-4">
 
           <button
             onClick={() =>
@@ -619,7 +689,23 @@ export default function ExamPage() {
 
         </div>
 
-        <p className="mt-8 text-center text-xs text-zinc-600">
+        {/* 分からない */}
+
+        <button
+          onClick={() =>
+            answerQuestion("分からない")
+          }
+          className="w-full rounded-2xl border border-zinc-700 bg-zinc-900 py-4 font-semibold text-zinc-300 transition hover:bg-zinc-800"
+        >
+          分からない
+        </button>
+
+        <p className="mt-4 text-center text-xs leading-5 text-zinc-600">
+          「分からない」は不正解として記録され、
+          試験終了後に解説を確認できます
+        </p>
+
+        <p className="mt-6 text-center text-xs text-zinc-600">
           模擬試験中は正解・解説を表示しません
         </p>
 

@@ -30,7 +30,23 @@ function getStats(): StatsMap {
 }
 
 // ─────────────────────────────
-// 問題の「苦手度」
+// 本当に間違えた問題だけ取得
+// ─────────────────────────────
+
+function getWeakQuestions(stats: StatsMap) {
+  return questions.filter((question) => {
+    const data = stats[question.id];
+
+    return (
+      data &&
+      data.attempts > 0 &&
+      data.wrong > 0
+    );
+  });
+}
+
+// ─────────────────────────────
+// 苦手度
 // ─────────────────────────────
 
 function getWeight(
@@ -39,23 +55,25 @@ function getWeight(
 ) {
   const data = stats[questionId];
 
-  // 未回答問題もある程度優先
-  if (!data || data.attempts === 0) {
-    return 3;
+  if (
+    !data ||
+    data.attempts === 0 ||
+    data.wrong === 0
+  ) {
+    return 0;
   }
 
   const wrongRate =
     data.wrong / data.attempts;
 
-  // 間違い率が高いほど出やすくする
+  // 誤答率を最重要視
   let weight =
-    1 + wrongRate * 8;
+    1 + wrongRate * 10;
 
-  // 回答回数が多い問題は
-  // 「本当に苦手」という信頼度を少し上げる
+  // 複数回間違えている問題を
+  // 少しだけ優先
   weight +=
-    Math.min(data.attempts, 10) *
-    0.15;
+    Math.min(data.wrong, 5) * 0.5;
 
   return weight;
 }
@@ -101,7 +119,7 @@ function pickOneWeighted(
 }
 
 // ─────────────────────────────
-// 苦手度を考慮した問題セット作成
+// 苦手問題セット作成
 // 同じ問題は重複しない
 // ─────────────────────────────
 
@@ -109,8 +127,10 @@ function createWeakSession(
   length: number,
   stats: StatsMap
 ) {
+  // ★ ここが今回の重要変更
+  // 間違えたことがある問題だけ候補にする
   const remaining =
-    [...questions];
+    getWeakQuestions(stats);
 
   const result: Question[] = [];
 
@@ -121,8 +141,7 @@ function createWeakSession(
     );
 
   while (
-    result.length <
-      targetLength &&
+    result.length < targetLength &&
     remaining.length > 0
   ) {
     const picked =
@@ -141,10 +160,7 @@ function createWeakSession(
       );
 
     if (index !== -1) {
-      remaining.splice(
-        index,
-        1
-      );
+      remaining.splice(index, 1);
     }
   }
 
@@ -192,6 +208,12 @@ export default function WeakPage() {
   ] =
     useState(0);
 
+  const [
+    noWeakQuestions,
+    setNoWeakQuestions,
+  ] =
+    useState(false);
+
   // ─────────────────────────────
   // 苦手学習スタート
   // ─────────────────────────────
@@ -201,9 +223,18 @@ export default function WeakPage() {
   ) {
     const stats = getStats();
 
+    const weakQuestions =
+      getWeakQuestions(stats);
+
+    // 苦手問題が1問もない場合
+    if (weakQuestions.length === 0) {
+      setNoWeakQuestions(true);
+      return;
+    }
+
     const actualLength =
       length === "all"
-        ? questions.length
+        ? weakQuestions.length
         : length;
 
     const pickedQuestions =
@@ -213,6 +244,7 @@ export default function WeakPage() {
       );
 
     setSelectedLength(length);
+
     setSessionQuestions(
       pickedQuestions
     );
@@ -221,6 +253,7 @@ export default function WeakPage() {
     setSelected(null);
     setFinished(false);
     setSessionCorrect(0);
+    setNoWeakQuestions(false);
   }
 
   // ─────────────────────────────
@@ -231,8 +264,7 @@ export default function WeakPage() {
     questionId: number,
     correct: boolean
   ) {
-    const stats =
-      getStats();
+    const stats = getStats();
 
     const current =
       stats[questionId] ?? {
@@ -281,8 +313,7 @@ export default function WeakPage() {
     }
 
     const correct =
-      answer ===
-      question.answer;
+      answer === question.answer;
 
     setSelected(answer);
 
@@ -343,6 +374,53 @@ export default function WeakPage() {
     setSelected(null);
     setFinished(false);
     setSessionCorrect(0);
+    setNoWeakQuestions(false);
+  }
+
+  // ─────────────────────────────
+  // 苦手問題なし
+  // ─────────────────────────────
+
+  if (noWeakQuestions) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 py-10 text-white">
+        <div className="w-full max-w-xl text-center">
+
+          <p className="mb-3 text-zinc-400">
+            🎯 苦手克服
+          </p>
+
+          <h1 className="mb-4 text-3xl font-bold">
+            苦手問題はありません！
+          </h1>
+
+          <p className="mb-8 leading-7 text-zinc-400">
+            まだ間違えた問題がありません。
+            通常学習や模擬試験を進めると、
+            間違えた問題がここに追加されます。
+          </p>
+
+          <button
+            onClick={() =>
+              router.push("/quiz")
+            }
+            className="mb-3 w-full rounded-2xl bg-white py-4 font-semibold text-black"
+          >
+            通常学習へ
+          </button>
+
+          <button
+            onClick={() =>
+              router.push("/")
+            }
+            className="w-full rounded-2xl bg-zinc-800 py-4 font-semibold"
+          >
+            ホームへ戻る
+          </button>
+
+        </div>
+      </main>
+    );
   }
 
   // ─────────────────────────────
@@ -350,6 +428,16 @@ export default function WeakPage() {
   // ─────────────────────────────
 
   if (!selectedLength) {
+    const stats =
+      typeof window !== "undefined"
+        ? getStats()
+        : {};
+
+    const weakCount =
+      typeof window !== "undefined"
+        ? getWeakQuestions(stats).length
+        : 0;
+
     return (
       <main className="min-h-screen bg-zinc-950 px-6 py-10 text-white">
 
@@ -366,9 +454,16 @@ export default function WeakPage() {
             </h1>
 
             <p className="leading-6 text-zinc-400">
-              苦手な問題ほど
-              優先して出題します。
+              過去に間違えた問題だけを
+              優先して復習します。
             </p>
+
+            {weakCount > 0 && (
+              <p className="mt-3 text-sm font-semibold text-white">
+                現在の苦手問題：
+                {weakCount}問
+              </p>
+            )}
 
           </div>
 
@@ -430,7 +525,7 @@ export default function WeakPage() {
               </p>
 
               <p className="mt-1 text-sm text-zinc-600">
-                {questions.length}問
+                {weakCount}問
               </p>
             </button>
 
@@ -439,9 +534,10 @@ export default function WeakPage() {
           <div className="mt-6 rounded-2xl bg-zinc-900 p-4">
 
             <p className="text-sm leading-6 text-zinc-400">
-              💡 間違い率が高い問題や、
-              まだ十分に覚えられていない問題ほど
-              出題されやすくなります。
+              💡 1回以上間違えた問題だけが
+              出題対象です。
+              その中でも誤答率が高い問題ほど
+              優先して出題されます。
             </p>
 
           </div>
@@ -518,8 +614,7 @@ export default function WeakPage() {
             </p>
 
             <p className="text-xl">
-              正答率{" "}
-              {accuracy}%
+              正答率 {accuracy}%
             </p>
 
           </div>
@@ -604,14 +699,10 @@ export default function WeakPage() {
           <span>
             {currentIndex + 1}
             {" / "}
-            {
-              sessionQuestions.length
-            }
+            {sessionQuestions.length}
           </span>
 
         </div>
-
-        {/* 進捗バー */}
 
         <div className="mb-5 h-2 overflow-hidden rounded-full bg-zinc-800">
 
@@ -625,16 +716,13 @@ export default function WeakPage() {
         </div>
 
         <p className="mb-3 text-sm text-zinc-500">
-          問題{" "}
-          {question.id}
+          問題 {question.id}
         </p>
 
         <div className="mb-6 rounded-3xl bg-zinc-900 p-6">
 
           <p className="text-xl font-medium leading-8">
-            {
-              question.text
-            }
+            {question.text}
           </p>
 
         </div>
@@ -643,9 +731,7 @@ export default function WeakPage() {
 
           <button
             onClick={() =>
-              answerQuestion(
-                "○"
-              )
+              answerQuestion("○")
             }
             disabled={
               selected !== null
@@ -657,9 +743,7 @@ export default function WeakPage() {
 
           <button
             onClick={() =>
-              answerQuestion(
-                "×"
-              )
+              answerQuestion("×")
             }
             disabled={
               selected !== null
@@ -684,15 +768,11 @@ export default function WeakPage() {
 
             <p className="mb-3">
               正解：
-              {
-                question.answer
-              }
+              {question.answer}
             </p>
 
             <p className="mb-6 leading-7 text-zinc-300">
-              {
-                question.explanation
-              }
+              {question.explanation}
             </p>
 
             <button
