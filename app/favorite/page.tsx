@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { questions, Question } from "../data/question";
+import { questions, Question, QuestionAnswer } from "../data/question";
 
-type Answer = "○" | "×";
+type Answer = QuestionAnswer;
 type SessionLength = 5 | 10 | 20 | "all";
 
 type QuestionStats = {
@@ -458,9 +458,18 @@ export default function FavoritePage() {
           />
         </div>
 
-        <p className="mb-3 text-sm text-zinc-500">
-          問題 {question.id}
-        </p>
+        <div className="mb-3 flex items-center justify-between gap-3 text-sm text-zinc-500">
+          <p>
+            問題 {question.sourceQuestionNo}
+          </p>
+
+          <span className="rounded-full bg-zinc-900 px-3 py-1 text-xs">
+            {question.level} /{" "}
+            {question.type === "truefalse"
+              ? "真偽法"
+              : "多肢選一"}
+          </span>
+        </div>
 
         <div className="mb-4 rounded-3xl bg-zinc-900 p-6">
 
@@ -469,6 +478,17 @@ export default function FavoritePage() {
           </p>
 
         </div>
+
+        {question.requiresImage && (
+          <div className="mb-4 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4">
+            <p className="text-sm font-semibold text-amber-200">
+              🖼️ この問題は図・記号を使う問題です
+            </p>
+            <p className="mt-1 text-xs leading-5 text-amber-100/70">
+              現在は問題データのみ登録済みです。図画像は後で追加します。
+            </p>
+          </div>
+        )}
 
         <button
           onClick={() =>
@@ -479,29 +499,81 @@ export default function FavoritePage() {
           ★ 要復習から外す
         </button>
 
-        <div className="mb-6 grid grid-cols-2 gap-4">
+        {question.type === "truefalse" ? (
+          <div className="mb-6 grid grid-cols-2 gap-4">
 
-          <button
-            onClick={() =>
-              answerQuestion("○")
-            }
-            disabled={selected !== null}
-            className="rounded-2xl bg-zinc-800 py-6 text-3xl font-bold hover:bg-zinc-700 disabled:opacity-50"
-          >
-            ○
-          </button>
+            <button
+              onClick={() =>
+                answerQuestion("○")
+              }
+              disabled={selected !== null}
+              className="rounded-2xl bg-zinc-800 py-6 text-3xl font-bold hover:bg-zinc-700 disabled:opacity-50"
+            >
+              ○
+            </button>
 
-          <button
-            onClick={() =>
-              answerQuestion("×")
-            }
-            disabled={selected !== null}
-            className="rounded-2xl bg-zinc-800 py-6 text-3xl font-bold hover:bg-zinc-700 disabled:opacity-50"
-          >
-            ×
-          </button>
+            <button
+              onClick={() =>
+                answerQuestion("×")
+              }
+              disabled={selected !== null}
+              className="rounded-2xl bg-zinc-800 py-6 text-3xl font-bold hover:bg-zinc-700 disabled:opacity-50"
+            >
+              ×
+            </button>
 
-        </div>
+          </div>
+        ) : (
+          <div className="mb-6 space-y-3">
+
+            {(["イ", "ロ", "ハ", "ニ"] as const).map(
+              (choiceKey) => {
+                const choiceText =
+                  question.choices?.[
+                    choiceKey
+                  ] ?? "";
+
+                return (
+                  <button
+                    key={choiceKey}
+                    onClick={() =>
+                      answerQuestion(
+                        choiceKey
+                      )
+                    }
+                    disabled={
+                      selected !== null
+                    }
+                    className={`w-full rounded-2xl border p-4 text-left transition ${
+                      selected === choiceKey
+                        ? choiceKey === question.answer
+                          ? "border-green-400 bg-green-400/10"
+                          : "border-red-400 bg-red-400/10"
+                        : selected !== null &&
+                            choiceKey === question.answer
+                          ? "border-green-400 bg-green-400/10"
+                          : "border-zinc-700 bg-zinc-900 hover:bg-zinc-800"
+                    } disabled:cursor-default`}
+                  >
+                    <div className="flex items-start gap-4">
+
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800 text-lg font-bold">
+                        {choiceKey}
+                      </span>
+
+                      <span className="pt-1 leading-7 text-zinc-100">
+                        {choiceText ||
+                          "（図・記号の選択肢）"}
+                      </span>
+
+                    </div>
+                  </button>
+                );
+              }
+            )}
+
+          </div>
+        )}
 
         {selected && (
           <div className="rounded-3xl bg-zinc-900 p-6">
@@ -513,7 +585,22 @@ export default function FavoritePage() {
             </p>
 
             <p className="mb-3">
-              正解：{question.answer}
+              正解：
+              {question.answer}
+              {question.type === "choice" &&
+                question.choices?.[
+                  question.answer as
+                    "イ" | "ロ" | "ハ" | "ニ"
+                ] && (
+                  <span className="ml-2 text-zinc-400">
+                    {
+                      question.choices[
+                        question.answer as
+                          "イ" | "ロ" | "ハ" | "ニ"
+                      ]
+                    }
+                  </span>
+                )}
             </p>
 
             <p className="mb-6 leading-7 text-zinc-300">

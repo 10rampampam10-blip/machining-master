@@ -13,7 +13,7 @@ export default function Home() {
             <span className="h-2 w-2 rounded-full bg-green-400" />
 
             <p className="text-xs font-medium tracking-wide text-zinc-400">
-              技能大会 学科対策
+              技能検定 学科対策
             </p>
           </div>
 
@@ -22,15 +22,15 @@ export default function Home() {
           <div className="mb-5">
 
             <h1 className="text-[46px] font-black leading-none tracking-[-0.07em] text-white sm:text-5xl">
-              仕上げマスター
+              マシニングマスター
             </h1>
 
             <div className="mt-4 flex items-center gap-3">
 
               <div className="h-[2px] w-12 rounded-full bg-white" />
 
-              <p className="text-[10px] font-bold tracking-[0.38em] text-zinc-600">
-                SHIAGE MASTER
+              <p className="text-[10px] font-bold tracking-[0.34em] text-zinc-600">
+                MACHINING MASTER
               </p>
 
             </div>
@@ -38,8 +38,8 @@ export default function Home() {
           </div>
 
           <p className="max-w-md leading-7 text-zinc-400">
-            苦手を見つけて、効率よく仕上げる。
-            毎日の積み重ねで本番に強くなろう。
+            機械加工の学科問題を、効率よく反復。
+            苦手をつぶして、本番に強くなろう。
           </p>
 
         </div>
@@ -85,7 +85,7 @@ export default function Home() {
             </p>
 
             <span className="text-[10px] tracking-wider text-zinc-700">
-              SHIAGE MASTER
+              MACHINING MASTER
             </span>
 
           </div>
@@ -101,7 +101,7 @@ export default function Home() {
                 <div className="flex items-center gap-4">
 
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-zinc-700 bg-zinc-800 text-xl">
-                    📚
+                    🏭
                   </div>
 
                   <div>
@@ -110,7 +110,7 @@ export default function Home() {
                     </p>
 
                     <p className="mt-1 text-xs text-zinc-500">
-                      章・順番・問題数を選んで学習
+                      級・形式・学習方法を選んで学習
                     </p>
                   </div>
 
@@ -172,7 +172,7 @@ export default function Home() {
                     </p>
 
                     <p className="mt-1 text-xs text-zinc-500">
-                      間違い率の高い問題を優先
+                      過去に間違えた問題を優先復習
                     </p>
                   </div>
 
@@ -203,7 +203,7 @@ export default function Home() {
                     </p>
 
                     <p className="mt-1 text-xs text-zinc-500">
-                      本番形式でランダム出題
+                      真偽法・多肢選一をランダム出題
                     </p>
                   </div>
 
@@ -256,11 +256,11 @@ export default function Home() {
         <div className="mt-10 border-t border-zinc-900 pt-6 text-center">
 
           <p className="text-xs text-zinc-700">
-            仕上げ作業 学科対策
+            機械加工 学科対策
           </p>
 
           <p className="mt-2 text-[9px] font-bold tracking-[0.3em] text-zinc-800">
-            SHIAGE MASTER
+            MACHINING MASTER
           </p>
 
         </div>

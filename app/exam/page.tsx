@@ -1,10 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { questions, Question } from "../data/question";
+import {
+  questions,
+  Question,
+  QuestionAnswer,
+} from "../data/question";
 
-type Answer = "○" | "×";
-type ExamSelection = Answer | "分からない";
+type Answer = QuestionAnswer;
+type ExamSelection =
+  | Answer
+  | "分からない";
 type ExamLength = 10 | 20 | 30 | 40;
 
 type QuestionStats = {
@@ -28,24 +34,39 @@ export default function ExamPage() {
   const [examQuestions, setExamQuestions] =
     useState<Question[]>([]);
 
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] =
+    useState(0);
 
   const [answers, setAnswers] =
     useState<ExamAnswer[]>([]);
 
-  const [finished, setFinished] = useState(false);
+  const [finished, setFinished] =
+    useState(false);
 
   // ─────────────────────────────
   // シャッフル
   // ─────────────────────────────
 
-  function shuffleQuestions(list: Question[]) {
+  function shuffleQuestions(
+    list: Question[]
+  ) {
     const shuffled = [...list];
 
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+    for (
+      let i =
+        shuffled.length - 1;
+      i > 0;
+      i--
+    ) {
+      const j =
+        Math.floor(
+          Math.random() * (i + 1)
+        );
 
-      [shuffled[i], shuffled[j]] = [
+      [
+        shuffled[i],
+        shuffled[j],
+      ] = [
         shuffled[j],
         shuffled[i],
       ];
@@ -58,14 +79,19 @@ export default function ExamPage() {
   // 模擬試験スタート
   // ─────────────────────────────
 
-  function startExam(length: ExamLength) {
-    const shuffled = shuffleQuestions(questions);
+  function startExam(
+    length: ExamLength
+  ) {
+    const shuffled =
+      shuffleQuestions(questions);
 
     const selectedQuestions =
       shuffled.slice(0, length);
 
     setExamLength(length);
-    setExamQuestions(selectedQuestions);
+    setExamQuestions(
+      selectedQuestions
+    );
     setCurrentIndex(0);
     setAnswers([]);
     setFinished(false);
@@ -80,13 +106,16 @@ export default function ExamPage() {
     correct: boolean
   ) {
     const saved =
-      localStorage.getItem("questionStats");
+      localStorage.getItem(
+        "questionStats"
+      );
 
     let stats: StatsMap = {};
 
     if (saved) {
       try {
-        stats = JSON.parse(saved);
+        stats =
+          JSON.parse(saved);
       } catch {
         stats = {};
       }
@@ -100,13 +129,16 @@ export default function ExamPage() {
       };
 
     stats[questionId] = {
-      attempts: current.attempts + 1,
+      attempts:
+        current.attempts + 1,
 
       correct:
-        current.correct + (correct ? 1 : 0),
+        current.correct +
+        (correct ? 1 : 0),
 
       wrong:
-        current.wrong + (correct ? 0 : 1),
+        current.wrong +
+        (correct ? 0 : 1),
     };
 
     localStorage.setItem(
@@ -123,17 +155,24 @@ export default function ExamPage() {
     selected: ExamSelection
   ) {
     const currentQuestion =
-      examQuestions[currentIndex];
+      examQuestions[
+        currentIndex
+      ];
 
-    if (!currentQuestion) return;
+    if (!currentQuestion) {
+      return;
+    }
 
     // 「分からない」は必ず不正解
     const correct =
-      selected !== "分からない" &&
-      selected === currentQuestion.answer;
+      selected !==
+        "分からない" &&
+      selected ===
+        currentQuestion.answer;
 
     const newAnswer: ExamAnswer = {
-      question: currentQuestion,
+      question:
+        currentQuestion,
       selected,
       correct,
     };
@@ -143,7 +182,8 @@ export default function ExamPage() {
       newAnswer,
     ]);
 
-    // 「分からない」も不正解として保存
+    // 「分からない」も
+    // 不正解として保存
     saveAnswer(
       currentQuestion.id,
       correct
@@ -222,12 +262,39 @@ export default function ExamPage() {
   }
 
   // ─────────────────────────────
+  // 選択肢本文取得
+  // ─────────────────────────────
+
+  function getChoiceText(
+    question: Question,
+    answer: ExamSelection
+  ) {
+    if (
+      question.type !==
+        "choice" ||
+      answer ===
+        "分からない" ||
+      answer === "○" ||
+      answer === "×"
+    ) {
+      return null;
+    }
+
+    return (
+      question.choices?.[
+        answer
+      ] ?? null
+    );
+  }
+
+  // ─────────────────────────────
   // 問題数選択画面
   // ─────────────────────────────
 
   if (!examLength) {
     return (
       <main className="min-h-screen bg-zinc-950 px-6 py-10 text-white">
+
         <div className="mx-auto w-full max-w-xl">
 
           <div className="mb-8 text-center">
@@ -250,7 +317,9 @@ export default function ExamPage() {
           <div className="grid grid-cols-2 gap-4">
 
             <button
-              onClick={() => startExam(10)}
+              onClick={() =>
+                startExam(10)
+              }
               className="rounded-3xl bg-zinc-900 p-7 transition hover:scale-105 hover:bg-zinc-800"
             >
               <p className="text-3xl font-bold">
@@ -263,7 +332,9 @@ export default function ExamPage() {
             </button>
 
             <button
-              onClick={() => startExam(20)}
+              onClick={() =>
+                startExam(20)
+              }
               className="rounded-3xl bg-zinc-900 p-7 transition hover:scale-105 hover:bg-zinc-800"
             >
               <p className="text-3xl font-bold">
@@ -276,7 +347,9 @@ export default function ExamPage() {
             </button>
 
             <button
-              onClick={() => startExam(30)}
+              onClick={() =>
+                startExam(30)
+              }
               className="rounded-3xl bg-zinc-900 p-7 transition hover:scale-105 hover:bg-zinc-800"
             >
               <p className="text-3xl font-bold">
@@ -289,7 +362,9 @@ export default function ExamPage() {
             </button>
 
             <button
-              onClick={() => startExam(40)}
+              onClick={() =>
+                startExam(40)
+              }
               className="rounded-3xl bg-white p-7 text-black transition hover:scale-105"
             >
               <p className="text-3xl font-bold">
@@ -306,7 +381,8 @@ export default function ExamPage() {
           <div className="mt-6 rounded-2xl bg-zinc-900 p-4">
 
             <p className="text-sm leading-6 text-zinc-400">
-              💡 全問題からランダムに出題します。
+              💡 全{questions.length}問からランダムに出題します。
+              真偽法と多肢選一の両方が出題されます。
               模擬試験中は正解・解説は表示されません。
               分からない問題は「分からない」を選ぶと、
               試験後に解説を確認できます。
@@ -322,6 +398,7 @@ export default function ExamPage() {
           </a>
 
         </div>
+
       </main>
     );
   }
@@ -333,38 +410,49 @@ export default function ExamPage() {
   if (finished) {
     const correctCount =
       answers.filter(
-        (answer) => answer.correct
+        (answer) =>
+          answer.correct
       ).length;
 
     const unknownCount =
       answers.filter(
         (answer) =>
-          answer.selected === "分からない"
+          answer.selected ===
+          "分からない"
       ).length;
 
-    const total = examQuestions.length;
+    const total =
+      examQuestions.length;
 
     const percentage =
       total > 0
         ? Math.round(
-            (correctCount / total) * 100
+            (correctCount /
+              total) *
+              100
           )
         : 0;
 
     // 不正解＋分からない
     const reviewAnswers =
       answers.filter(
-        (answer) => !answer.correct
+        (answer) =>
+          !answer.correct
       );
 
     const scoreColor =
-      getScoreColor(percentage);
+      getScoreColor(
+        percentage
+      );
 
     const scoreRank =
-      getScoreRank(percentage);
+      getScoreRank(
+        percentage
+      );
 
     return (
       <main className="min-h-screen bg-zinc-950 px-6 py-10 text-white">
+
         <div className="mx-auto w-full max-w-xl">
 
           <div className="mb-8 text-center">
@@ -419,7 +507,8 @@ export default function ExamPage() {
                   </p>
 
                   <p className="mt-1 text-xl font-bold">
-                    分からない {unknownCount}問
+                    分からない{" "}
+                    {unknownCount}問
                   </p>
 
                 </div>
@@ -431,7 +520,8 @@ export default function ExamPage() {
 
           {/* 要確認問題 */}
 
-          {reviewAnswers.length > 0 ? (
+          {reviewAnswers.length >
+          0 ? (
             <div className="mb-8">
 
               <h2 className="mb-2 text-2xl font-bold">
@@ -446,86 +536,150 @@ export default function ExamPage() {
               <div className="space-y-4">
 
                 {reviewAnswers.map(
-                  (answer) => (
-                    <div
-                      key={
-                        answer.question.id
-                      }
-                      className="rounded-2xl bg-zinc-900 p-5"
-                    >
+                  (answer) => {
+                    const selectedText =
+                      getChoiceText(
+                        answer.question,
+                        answer.selected
+                      );
 
-                      <div className="mb-3 flex items-center justify-between gap-3">
+                    const correctText =
+                      getChoiceText(
+                        answer.question,
+                        answer.question
+                          .answer
+                      );
 
-                        <p className="text-sm text-zinc-500">
-                          問題{" "}
+                    return (
+                      <div
+                        key={
+                          answer.question
+                            .id
+                        }
+                        className="rounded-2xl bg-zinc-900 p-5"
+                      >
+
+                        <div className="mb-3 flex items-center justify-between gap-3">
+
+                          <div>
+
+                            <p className="text-sm text-zinc-500">
+                              問題{" "}
+                              {
+                                answer.question
+                                  .sourceQuestionNo
+                              }
+                            </p>
+
+                            <p className="mt-1 text-xs text-zinc-600">
+                              {
+                                answer.question
+                                  .level
+                              }
+                              {" / "}
+                              {answer.question
+                                .type ===
+                              "truefalse"
+                                ? "真偽法"
+                                : "多肢選一"}
+                            </p>
+
+                          </div>
+
+                          {answer.selected ===
+                          "分からない" ? (
+                            <span className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-semibold text-zinc-300">
+                              分からない
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-400">
+                              不正解
+                            </span>
+                          )}
+
+                        </div>
+
+                        <p className="mb-5 leading-7">
                           {
-                            answer.question.id
+                            answer.question
+                              .text
                           }
                         </p>
 
-                        {answer.selected ===
-                        "分からない" ? (
-                          <span className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-semibold text-zinc-300">
-                            分からない
-                          </span>
-                        ) : (
-                          <span className="rounded-full bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-400">
-                            不正解
-                          </span>
+                        {answer.question
+                          .requiresImage && (
+                          <div className="mb-4 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4">
+
+                            <p className="text-sm font-semibold text-amber-200">
+                              🖼️ この問題は図・記号を使う問題です
+                            </p>
+
+                            <p className="mt-1 text-xs leading-5 text-amber-100/70">
+                              現在は問題データのみ登録済みです。
+                            </p>
+
+                          </div>
                         )}
 
+                        <div className="mb-4 rounded-2xl bg-zinc-800 p-4">
+
+                          <p className="mb-2 text-sm text-zinc-400">
+                            あなたの回答
+                          </p>
+
+                          <p className="text-lg font-bold">
+                            {
+                              answer.selected
+                            }
+                          </p>
+
+                          {selectedText && (
+                            <p className="mt-1 text-sm leading-6 text-zinc-400">
+                              {selectedText}
+                            </p>
+                          )}
+
+                        </div>
+
+                        <div className="mb-4 rounded-2xl bg-zinc-800 p-4">
+
+                          <p className="mb-2 text-sm text-zinc-400">
+                            正解
+                          </p>
+
+                          <p className="text-2xl font-bold">
+                            {
+                              answer.question
+                                .answer
+                            }
+                          </p>
+
+                          {correctText && (
+                            <p className="mt-1 text-sm leading-6 text-zinc-400">
+                              {correctText}
+                            </p>
+                          )}
+
+                        </div>
+
+                        <div>
+
+                          <p className="mb-2 text-sm font-semibold text-zinc-400">
+                            解説
+                          </p>
+
+                          <p className="leading-7 text-zinc-300">
+                            {
+                              answer.question
+                                .explanation
+                            }
+                          </p>
+
+                        </div>
+
                       </div>
-
-                      <p className="mb-5 leading-7">
-                        {
-                          answer.question.text
-                        }
-                      </p>
-
-                      <div className="mb-4 rounded-2xl bg-zinc-800 p-4">
-
-                        <p className="mb-2 text-sm text-zinc-400">
-                          あなたの回答
-                        </p>
-
-                        <p className="text-lg font-bold">
-                          {
-                            answer.selected
-                          }
-                        </p>
-
-                      </div>
-
-                      <div className="mb-4 rounded-2xl bg-zinc-800 p-4">
-
-                        <p className="mb-2 text-sm text-zinc-400">
-                          正解
-                        </p>
-
-                        <p className="text-2xl font-bold">
-                          {
-                            answer.question.answer
-                          }
-                        </p>
-
-                      </div>
-
-                      <div>
-
-                        <p className="mb-2 text-sm font-semibold text-zinc-400">
-                          解説
-                        </p>
-
-                        <p className="leading-7 text-zinc-300">
-                          {
-                            answer.question.explanation
-                          }
-                        </p>
-
-                      </div>
-
-                    </div>
-                  )
+                    );
+                  }
                 )}
 
               </div>
@@ -549,7 +703,9 @@ export default function ExamPage() {
 
             <button
               onClick={() =>
-                startExam(examLength)
+                startExam(
+                  examLength
+                )
               }
               className="w-full rounded-2xl bg-white py-4 font-semibold text-black"
             >
@@ -559,7 +715,9 @@ export default function ExamPage() {
             <button
               onClick={() => {
                 setExamLength(null);
-                setExamQuestions([]);
+                setExamQuestions(
+                  []
+                );
                 setCurrentIndex(0);
                 setAnswers([]);
                 setFinished(false);
@@ -586,12 +744,15 @@ export default function ExamPage() {
           </div>
 
         </div>
+
       </main>
     );
   }
 
   const currentQuestion =
-    examQuestions[currentIndex];
+    examQuestions[
+      currentIndex
+    ];
 
   if (!currentQuestion) {
     return (
@@ -612,6 +773,7 @@ export default function ExamPage() {
 
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-10 text-white">
+
       <div className="mx-auto w-full max-w-xl">
 
         <div className="mb-8 flex items-center justify-between">
@@ -623,7 +785,11 @@ export default function ExamPage() {
             </p>
 
             <h1 className="text-2xl font-bold">
-              全{examQuestions.length}問
+              全
+              {
+                examQuestions.length
+              }
+              問
             </h1>
 
           </div>
@@ -631,7 +797,9 @@ export default function ExamPage() {
           <p className="text-lg font-bold">
             {currentIndex + 1}
             {" / "}
-            {examQuestions.length}
+            {
+              examQuestions.length
+            }
           </p>
 
         </div>
@@ -649,51 +817,137 @@ export default function ExamPage() {
 
         </div>
 
-        <p className="mb-3 text-sm text-zinc-500">
-          問題 {currentQuestion.id}
-        </p>
+        <div className="mb-3 flex items-center justify-between gap-3 text-sm text-zinc-500">
 
-        <div className="mb-8 rounded-3xl bg-zinc-900 p-6">
+          <p>
+            問題{" "}
+            {
+              currentQuestion
+                .sourceQuestionNo
+            }
+          </p>
+
+          <span className="rounded-full bg-zinc-900 px-3 py-1 text-xs">
+            {
+              currentQuestion.level
+            }
+            {" / "}
+            {currentQuestion.type ===
+            "truefalse"
+              ? "真偽法"
+              : "多肢選一"}
+          </span>
+
+        </div>
+
+        <div className="mb-4 rounded-3xl bg-zinc-900 p-6">
 
           <p className="text-xl font-medium leading-8">
-            {currentQuestion.text}
+            {
+              currentQuestion.text
+            }
           </p>
 
         </div>
 
+        {currentQuestion.requiresImage && (
+          <div className="mb-4 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4">
+
+            <p className="text-sm font-semibold text-amber-200">
+              🖼️ この問題は図・記号を使う問題です
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-amber-100/70">
+              現在は問題データのみ登録済みです。図画像は後で追加します。
+            </p>
+
+          </div>
+        )}
+
         <p className="mb-4 text-center text-sm text-zinc-400">
-          正しいと思う方を選択してください
+          {currentQuestion.type ===
+          "truefalse"
+            ? "正しいと思う方を選択してください"
+            : "正しい選択肢を選んでください"}
         </p>
 
-        {/* ○ × */}
+        {currentQuestion.type ===
+        "truefalse" ? (
+          <div className="mb-4 grid grid-cols-2 gap-4">
 
-        <div className="mb-4 grid grid-cols-2 gap-4">
+            <button
+              onClick={() =>
+                answerQuestion("○")
+              }
+              className="rounded-2xl bg-zinc-800 py-8 text-4xl font-bold transition hover:scale-[1.02] hover:bg-zinc-700"
+            >
+              ○
+            </button>
 
-          <button
-            onClick={() =>
-              answerQuestion("○")
-            }
-            className="rounded-2xl bg-zinc-800 py-8 text-4xl font-bold transition hover:scale-[1.02] hover:bg-zinc-700"
-          >
-            ○
-          </button>
+            <button
+              onClick={() =>
+                answerQuestion("×")
+              }
+              className="rounded-2xl bg-zinc-800 py-8 text-4xl font-bold transition hover:scale-[1.02] hover:bg-zinc-700"
+            >
+              ×
+            </button>
 
-          <button
-            onClick={() =>
-              answerQuestion("×")
-            }
-            className="rounded-2xl bg-zinc-800 py-8 text-4xl font-bold transition hover:scale-[1.02] hover:bg-zinc-700"
-          >
-            ×
-          </button>
+          </div>
+        ) : (
+          <div className="mb-4 space-y-3">
 
-        </div>
+            {(
+              [
+                "イ",
+                "ロ",
+                "ハ",
+                "ニ",
+              ] as const
+            ).map(
+              (choiceKey) => (
+                <button
+                  key={choiceKey}
+                  onClick={() =>
+                    answerQuestion(
+                      choiceKey
+                    )
+                  }
+                  className="w-full rounded-2xl border border-zinc-700 bg-zinc-900 p-4 text-left transition hover:scale-[1.01] hover:bg-zinc-800"
+                >
+
+                  <div className="flex items-start gap-4">
+
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800 text-lg font-bold">
+                      {choiceKey}
+                    </span>
+
+                    <span className="pt-1 leading-7 text-zinc-100">
+                      {
+                        currentQuestion
+                          .choices?.[
+                          choiceKey
+                        ] ||
+                        "（図・記号の選択肢）"
+                      }
+                    </span>
+
+                  </div>
+
+                </button>
+              )
+            )}
+
+          </div>
+        )}
 
         {/* 分からない */}
 
         <button
           onClick={() =>
-            answerQuestion("分からない")
+            answerQuestion(
+              "分からない"
+            )
           }
           className="w-full rounded-2xl border border-zinc-700 bg-zinc-900 py-4 font-semibold text-zinc-300 transition hover:bg-zinc-800"
         >
@@ -710,6 +964,7 @@ export default function ExamPage() {
         </p>
 
       </div>
+
     </main>
   );
 }

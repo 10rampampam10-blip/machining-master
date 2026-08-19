@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  questions,
+  Question,
+  QuestionType,
+  QuestionLevel,
+} from "../data/question";
 
 type QuestionStats = {
   attempts: number;
@@ -11,114 +17,54 @@ type QuestionStats = {
 
 type StatsMap = Record<number, QuestionStats>;
 
-type Chapter = {
+type Group = {
   id: string;
   name: string;
   icon: string;
-  start: number;
-  end: number;
+  level: QuestionLevel;
+  type: QuestionType;
 };
 
-const chapters: Chapter[] = [
+const groups: Group[] = [
   {
-    id: "machine-gears",
-    name: "機械要素（ねじ・歯車）",
-    icon: "⚙️",
-    start: 1,
-    end: 62,
+    id: "level1-truefalse",
+    name: "1級 真偽法",
+    icon: "⭕",
+    level: "1級",
+    type: "truefalse",
   },
   {
-    id: "machine-other",
-    name: "機械要素（その他の機素）",
-    icon: "🔩",
-    start: 63,
-    end: 116,
+    id: "level1-choice",
+    name: "1級 多肢選一",
+    icon: "🔢",
+    level: "1級",
+    type: "choice",
   },
   {
-    id: "material-1",
-    name: "材料（鉄鋼・非鉄・非金属）",
-    icon: "🧱",
-    start: 117,
-    end: 157,
+    id: "level2-truefalse",
+    name: "2級 真偽法",
+    icon: "⭕",
+    level: "2級",
+    type: "truefalse",
   },
   {
-    id: "material-2",
-    name: "材料（熱処理・材料試験）",
-    icon: "🔥",
-    start: 158,
-    end: 196,
-  },
-  {
-    id: "strength",
-    name: "材料力学",
-    icon: "📐",
-    start: 197,
-    end: 222,
-  },
-  {
-    id: "drawing",
-    name: "製図",
-    icon: "✏️",
-    start: 223,
-    end: 265,
-  },
-  {
-    id: "electric",
-    name: "電気",
-    icon: "⚡",
-    start: 266,
-    end: 297,
-  },
-  {
-    id: "safety",
-    name: "安全衛生",
-    icon: "🦺",
-    start: 298,
-    end: 321,
-  },
-  {
-    id: "oil",
-    name: "切削油剤・潤滑",
-    icon: "🛢️",
-    start: 322,
-    end: 363,
-  },
-  {
-    id: "measurement",
-    name: "工作測定・品質管理",
-    icon: "📏",
-    start: 364,
-    end: 407,
-  },
-  {
-    id: "hydraulic",
-    name: "油圧・空圧",
-    icon: "💨",
-    start: 408,
-    end: 421,
-  },
-  {
-    id: "work-1",
-    name: "工作法一般1",
-    icon: "🪚",
-    start: 422,
-    end: 474,
-  },
-  {
-    id: "work-2",
-    name: "工作法一般2",
-    icon: "🛠️",
-    start: 475,
-    end: 540,
-  },
-  {
-    id: "work-3",
-    name: "工作法一般3",
-    icon: "🏭",
-    start: 541,
-    end: 597,
+    id: "level2-choice",
+    name: "2級 多肢選一",
+    icon: "🔢",
+    level: "2級",
+    type: "choice",
   },
 ];
+
+function getQuestionsForGroup(
+  group: Group
+) {
+  return questions.filter(
+    (question) =>
+      question.level === group.level &&
+      question.type === group.type
+  );
+}
 
 export default function StatsPage() {
   const router = useRouter();
@@ -126,43 +72,107 @@ export default function StatsPage() {
   const [stats, setStats] =
     useState<StatsMap>({});
 
-  useEffect(() => {
-    const saved =
-      localStorage.getItem("questionStats");
+  const [favoriteCount, setFavoriteCount] =
+    useState(0);
 
-    if (saved) {
+  const [loaded, setLoaded] =
+    useState(false);
+
+  useEffect(() => {
+    const savedStats =
+      localStorage.getItem(
+        "questionStats"
+      );
+
+    if (savedStats) {
       try {
-        setStats(JSON.parse(saved));
+        setStats(
+          JSON.parse(savedStats)
+        );
       } catch {
         setStats({});
       }
     }
+
+    const savedFavorites =
+      localStorage.getItem(
+        "favoriteQuestions"
+      );
+
+    if (savedFavorites) {
+      try {
+        const ids: number[] =
+          JSON.parse(
+            savedFavorites
+          );
+
+        const validIds =
+          new Set(
+            questions.map(
+              (question) =>
+                question.id
+            )
+          );
+
+        setFavoriteCount(
+          ids.filter((id) =>
+            validIds.has(id)
+          ).length
+        );
+      } catch {
+        setFavoriteCount(0);
+      }
+    }
+
+    setLoaded(true);
   }, []);
 
-  const entries =
-    Object.entries(stats).sort(
-      ([a], [b]) =>
-        Number(a) - Number(b)
+  const validQuestionIds =
+    useMemo(
+      () =>
+        new Set(
+          questions.map(
+            (question) =>
+              question.id
+          )
+        ),
+      []
     );
+
+  const entries =
+    Object.entries(stats)
+      .filter(([id]) =>
+        validQuestionIds.has(
+          Number(id)
+        )
+      )
+      .sort(
+        ([a], [b]) =>
+          Number(a) -
+          Number(b)
+      );
 
   const totalAttempts =
     entries.reduce(
       (sum, [, value]) =>
-        sum + value.attempts,
+        sum +
+        value.attempts,
       0
     );
 
   const totalCorrect =
     entries.reduce(
       (sum, [, value]) =>
-        sum + value.correct,
+        sum +
+        value.correct,
       0
     );
 
   const totalWrong =
     entries.reduce(
       (sum, [, value]) =>
-        sum + value.wrong,
+        sum +
+        value.wrong,
       0
     );
 
@@ -176,10 +186,31 @@ export default function StatsPage() {
         );
 
   const studiedQuestions =
-    entries.filter(
-      ([, value]) =>
-        value.attempts > 0
+    questions.filter(
+      (question) =>
+        stats[question.id] &&
+        stats[question.id]
+          .attempts > 0
     ).length;
+
+  const weakCount =
+    questions.filter(
+      (question) =>
+        stats[question.id] &&
+        stats[question.id]
+          .attempts > 0 &&
+        stats[question.id]
+          .wrong > 0
+    ).length;
+
+  const totalProgress =
+    questions.length > 0
+      ? Math.round(
+          (studiedQuestions /
+            questions.length) *
+            100
+        )
+      : 0;
 
   function getAccuracyColor(
     accuracy: number
@@ -199,20 +230,24 @@ export default function StatsPage() {
     return "text-red-400";
   }
 
-  function getChapterStats(
-    chapter: Chapter
+  function getGroupStats(
+    group: Group
   ) {
+    const groupQuestions =
+      getQuestionsForGroup(
+        group
+      );
+
     let attempts = 0;
     let correct = 0;
     let studied = 0;
 
     for (
-      let id = chapter.start;
-      id <= chapter.end;
-      id++
+      const question of
+      groupQuestions
     ) {
       const data =
-        stats[id];
+        stats[question.id];
 
       if (!data) {
         continue;
@@ -232,9 +267,7 @@ export default function StatsPage() {
     }
 
     const total =
-      chapter.end -
-      chapter.start +
-      1;
+      groupQuestions.length;
 
     const accuracy =
       attempts > 0
@@ -246,10 +279,13 @@ export default function StatsPage() {
         : null;
 
     const progress =
-      Math.round(
-        (studied / total) *
-          100
-      );
+      total > 0
+        ? Math.round(
+            (studied /
+              total) *
+              100
+          )
+        : 0;
 
     return {
       attempts,
@@ -262,13 +298,30 @@ export default function StatsPage() {
   }
 
   const weakQuestions =
-    entries
+    questions
       .filter(
-        ([, value]) =>
-          value.attempts > 0
+        (question) => {
+          const value =
+            stats[
+              question.id
+            ];
+
+          return (
+            value &&
+            value.attempts >
+              0 &&
+            value.wrong >
+              0
+          );
+        }
       )
       .map(
-        ([questionNo, value]) => {
+        (question) => {
+          const value =
+            stats[
+              question.id
+            ];
+
           const accuracy =
             Math.round(
               (value.correct /
@@ -277,10 +330,10 @@ export default function StatsPage() {
             );
 
           return {
-            questionNo:
-              Number(questionNo),
+            question,
             accuracy,
-            wrong: value.wrong,
+            wrong:
+              value.wrong,
             attempts:
               value.attempts,
           };
@@ -297,6 +350,16 @@ export default function StatsPage() {
           );
         }
 
+        if (
+          a.wrong !==
+          b.wrong
+        ) {
+          return (
+            b.wrong -
+            a.wrong
+          );
+        }
+
         return (
           b.attempts -
           a.attempts
@@ -304,8 +367,26 @@ export default function StatsPage() {
       })
       .slice(0, 5);
 
+  function getQuestionById(
+    id: number
+  ): Question | undefined {
+    return questions.find(
+      (question) =>
+        question.id === id
+    );
+  }
+
+  if (!loaded) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
+        読み込み中...
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-10 text-white">
+
       <div className="mx-auto w-full max-w-xl">
 
         <div className="mb-8">
@@ -319,7 +400,7 @@ export default function StatsPage() {
           </h1>
 
           <p className="text-sm text-zinc-500">
-            全体と章ごとの学習状況を確認できます。
+            機械加工{questions.length}問の学習状況を確認できます。
           </p>
 
         </div>
@@ -329,12 +410,13 @@ export default function StatsPage() {
         <div className="mb-8">
 
           <h2 className="mb-4 text-xl font-bold">
-            全体成績
+            🏭 機械加工
           </h2>
 
           <div className="grid grid-cols-2 gap-3">
 
             <div className="rounded-2xl bg-zinc-900 p-5">
+
               <p className="mb-1 text-sm text-zinc-400">
                 総回答数
               </p>
@@ -342,43 +424,85 @@ export default function StatsPage() {
               <p className="text-3xl font-bold">
                 {totalAttempts}
               </p>
+
             </div>
 
             <div className="rounded-2xl bg-zinc-900 p-5">
+
               <p className="mb-1 text-sm text-zinc-400">
                 全体正答率
               </p>
 
               <p
-                className={`text-3xl font-bold ${getAccuracyColor(
-                  totalAccuracy
-                )}`}
+                className={`text-3xl font-bold ${
+                  totalAttempts > 0
+                    ? getAccuracyColor(
+                        totalAccuracy
+                      )
+                    : "text-zinc-600"
+                }`}
               >
-                {totalAccuracy}%
+                {totalAttempts > 0
+                  ? `${totalAccuracy}%`
+                  : "--"}
               </p>
+
             </div>
 
             <div className="rounded-2xl bg-zinc-900 p-5">
-              <p className="mb-1 text-sm text-zinc-400">
-                正解数
-              </p>
 
-              <p className="text-3xl font-bold">
-                {totalCorrect}
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-zinc-900 p-5">
               <p className="mb-1 text-sm text-zinc-400">
                 学習済み
               </p>
 
               <p className="text-3xl font-bold">
                 {studiedQuestions}
+
                 <span className="ml-1 text-lg text-zinc-500">
-                  / 597
+                  / {questions.length}
                 </span>
               </p>
+
+            </div>
+
+            <div className="rounded-2xl bg-zinc-900 p-5">
+
+              <p className="mb-1 text-sm text-zinc-400">
+                苦手問題
+              </p>
+
+              <p className="text-3xl font-bold">
+                {weakCount}
+              </p>
+
+            </div>
+
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-3">
+
+            <div className="rounded-2xl bg-zinc-900 p-5">
+
+              <p className="mb-1 text-sm text-zinc-400">
+                正解数
+              </p>
+
+              <p className="text-2xl font-bold">
+                {totalCorrect}
+              </p>
+
+            </div>
+
+            <div className="rounded-2xl bg-zinc-900 p-5">
+
+              <p className="mb-1 text-sm text-zinc-400">
+                要復習
+              </p>
+
+              <p className="text-2xl font-bold">
+                {favoriteCount}
+              </p>
+
             </div>
 
           </div>
@@ -392,12 +516,7 @@ export default function StatsPage() {
               </span>
 
               <span className="font-semibold">
-                {Math.round(
-                  (studiedQuestions /
-                    597) *
-                    100
-                )}
-                %
+                {totalProgress}%
               </span>
 
             </div>
@@ -407,17 +526,14 @@ export default function StatsPage() {
               <div
                 className="h-full rounded-full bg-white transition-all duration-700"
                 style={{
-                  width: `${
-                    (studiedQuestions /
-                      597) *
-                    100
-                  }%`,
+                  width: `${totalProgress}%`,
                 }}
               />
 
             </div>
 
             <div className="mt-3 flex justify-between text-xs text-zinc-500">
+
               <span>
                 正解 {totalCorrect}
               </span>
@@ -425,33 +541,34 @@ export default function StatsPage() {
               <span>
                 不正解 {totalWrong}
               </span>
+
             </div>
 
           </div>
 
         </div>
 
-        {/* 章ごとの成績 */}
+        {/* 級・形式ごとの成績 */}
 
         <div className="mb-8">
 
           <h2 className="mb-4 text-xl font-bold">
-            章ごとの成績
+            級・形式ごとの成績
           </h2>
 
           <div className="space-y-3">
 
-            {chapters.map(
-              (chapter) => {
+            {groups.map(
+              (group) => {
                 const data =
-                  getChapterStats(
-                    chapter
+                  getGroupStats(
+                    group
                   );
 
                 return (
                   <div
                     key={
-                      chapter.id
+                      group.id
                     }
                     className="rounded-2xl bg-zinc-900 p-5"
                   >
@@ -462,7 +579,7 @@ export default function StatsPage() {
 
                         <span className="text-2xl">
                           {
-                            chapter.icon
+                            group.icon
                           }
                         </span>
 
@@ -470,7 +587,7 @@ export default function StatsPage() {
 
                           <p className="font-semibold">
                             {
-                              chapter.name
+                              group.name
                             }
                           </p>
 
@@ -558,63 +675,81 @@ export default function StatsPage() {
           {weakQuestions.length ===
           0 ? (
             <div className="rounded-2xl bg-zinc-900 p-6 text-zinc-400">
-              まだ回答履歴がありません。
+              まだ間違えた問題がありません。
             </div>
           ) : (
             <div className="space-y-3">
 
               {weakQuestions.map(
                 (
-                  question,
+                  item,
                   index
                 ) => (
                   <div
                     key={
-                      question.questionNo
+                      item.question.id
                     }
-                    className="flex items-center justify-between rounded-2xl bg-zinc-900 p-5"
+                    className="rounded-2xl bg-zinc-900 p-5"
                   >
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-between gap-4">
 
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800 font-bold">
-                        {index + 1}
+                      <div className="flex min-w-0 items-center gap-4">
+
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800 font-bold">
+                          {index + 1}
+                        </div>
+
+                        <div className="min-w-0">
+
+                          <p className="font-semibold">
+                            問題{" "}
+                            {
+                              item.question
+                                .sourceQuestionNo
+                            }
+                          </p>
+
+                          <p className="mt-1 text-xs text-zinc-500">
+                            {
+                              item.question
+                                .level
+                            }
+                            {" / "}
+                            {item.question
+                              .type ===
+                            "truefalse"
+                              ? "真偽法"
+                              : "多肢選一"}
+                          </p>
+
+                          <p className="mt-1 text-xs text-zinc-600">
+                            {
+                              item.attempts
+                            }
+                            回回答 /{" "}
+                            {
+                              item.wrong
+                            }
+                            回不正解
+                          </p>
+
+                        </div>
+
                       </div>
 
-                      <div>
-
-                        <p className="font-semibold">
-                          問題{" "}
-                          {
-                            question.questionNo
-                          }
-                        </p>
-
-                        <p className="mt-1 text-xs text-zinc-500">
-                          {
-                            question.attempts
-                          }
-                          回回答 /{" "}
-                          {
-                            question.wrong
-                          }
-                          回不正解
-                        </p>
-
-                      </div>
+                      <p
+                        className={`shrink-0 text-xl font-bold ${getAccuracyColor(
+                          item.accuracy
+                        )}`}
+                      >
+                        {
+                          item.accuracy
+                        }
+                        %
+                      </p>
 
                     </div>
-
-                    <p
-                      className={`text-xl font-bold ${getAccuracyColor(
-                        question.accuracy
-                      )}`}
-                    >
-                      {
-                        question.accuracy
-                      }
-                      %
-                    </p>
 
                   </div>
                 )
@@ -635,16 +770,34 @@ export default function StatsPage() {
 
           <div className="space-y-3">
 
-            {entries.length === 0 ? (
+            {entries.length ===
+            0 ? (
               <div className="rounded-2xl bg-zinc-900 p-6 text-zinc-400">
                 まだ回答履歴がありません。
               </div>
             ) : (
               entries.map(
                 ([
-                  questionNo,
+                  questionId,
                   value,
                 ]) => {
+                  const id =
+                    Number(
+                      questionId
+                    );
+
+                  const question =
+                    getQuestionById(
+                      id
+                    );
+
+                  if (
+                    !question ||
+                    value.attempts <=
+                      0
+                  ) {
+                    return null;
+                  }
 
                   const accuracy =
                     Math.round(
@@ -655,20 +808,33 @@ export default function StatsPage() {
 
                   return (
                     <div
-                      key={
-                        questionNo
-                      }
+                      key={id}
                       className="rounded-2xl bg-zinc-900 p-5"
                     >
 
-                      <div className="mb-3 flex items-center justify-between">
+                      <div className="mb-3 flex items-center justify-between gap-3">
 
-                        <p className="text-lg font-semibold">
-                          問題{" "}
-                          {
-                            questionNo
-                          }
-                        </p>
+                        <div>
+
+                          <p className="text-lg font-semibold">
+                            問題{" "}
+                            {
+                              question.sourceQuestionNo
+                            }
+                          </p>
+
+                          <p className="mt-1 text-xs text-zinc-500">
+                            {
+                              question.level
+                            }
+                            {" / "}
+                            {question.type ===
+                            "truefalse"
+                              ? "真偽法"
+                              : "多肢選一"}
+                          </p>
+
+                        </div>
 
                         <p
                           className={`text-xl font-bold ${getAccuracyColor(
@@ -682,6 +848,12 @@ export default function StatsPage() {
                         </p>
 
                       </div>
+
+                      <p className="mb-3 line-clamp-2 text-sm leading-6 text-zinc-400">
+                        {
+                          question.text
+                        }
+                      </p>
 
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-400">
 
@@ -731,6 +903,7 @@ export default function StatsPage() {
         </button>
 
       </div>
+
     </main>
   );
 }

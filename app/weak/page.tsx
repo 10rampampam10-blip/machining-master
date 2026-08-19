@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { questions, Question } from "../data/question";
+import { questions, Question, QuestionAnswer } from "../data/question";
 
-type Answer = "○" | "×";
+type Answer = QuestionAnswer;
 type SessionLength = 5 | 10 | 20 | "all";
 
 type QuestionStats = {
@@ -214,6 +214,32 @@ export default function WeakPage() {
   ] =
     useState(false);
 
+  const [
+    weakCount,
+    setWeakCount,
+  ] =
+    useState(0);
+
+  const [
+    loaded,
+    setLoaded,
+  ] =
+    useState(false);
+
+  // ─────────────────────────────
+  // 初期読み込み
+  // localStorage はマウント後に読む
+  // ─────────────────────────────
+
+  useEffect(() => {
+    const stats = getStats();
+    const count =
+      getWeakQuestions(stats).length;
+
+    setWeakCount(count);
+    setLoaded(true);
+  }, []);
+
   // ─────────────────────────────
   // 苦手学習スタート
   // ─────────────────────────────
@@ -225,6 +251,10 @@ export default function WeakPage() {
 
     const weakQuestions =
       getWeakQuestions(stats);
+
+    setWeakCount(
+      weakQuestions.length
+    );
 
     // 苦手問題が1問もない場合
     if (weakQuestions.length === 0) {
@@ -289,6 +319,10 @@ export default function WeakPage() {
     localStorage.setItem(
       "questionStats",
       JSON.stringify(stats)
+    );
+
+    setWeakCount(
+      getWeakQuestions(stats).length
     );
   }
 
@@ -378,6 +412,18 @@ export default function WeakPage() {
   }
 
   // ─────────────────────────────
+  // 初期読み込み中
+  // ─────────────────────────────
+
+  if (!loaded) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
+        読み込み中...
+      </main>
+    );
+  }
+
+  // ─────────────────────────────
   // 苦手問題なし
   // ─────────────────────────────
 
@@ -428,16 +474,6 @@ export default function WeakPage() {
   // ─────────────────────────────
 
   if (!selectedLength) {
-    const stats =
-      typeof window !== "undefined"
-        ? getStats()
-        : {};
-
-    const weakCount =
-      typeof window !== "undefined"
-        ? getWeakQuestions(stats).length
-        : 0;
-
     return (
       <main className="min-h-screen bg-zinc-950 px-6 py-10 text-white">
 
@@ -715,9 +751,18 @@ export default function WeakPage() {
 
         </div>
 
-        <p className="mb-3 text-sm text-zinc-500">
-          問題 {question.id}
-        </p>
+        <div className="mb-3 flex items-center justify-between gap-3 text-sm text-zinc-500">
+          <p>
+            問題 {question.sourceQuestionNo}
+          </p>
+
+          <span className="rounded-full bg-zinc-900 px-3 py-1 text-xs">
+            {question.level} /{" "}
+            {question.type === "truefalse"
+              ? "真偽法"
+              : "多肢選一"}
+          </span>
+        </div>
 
         <div className="mb-6 rounded-3xl bg-zinc-900 p-6">
 
@@ -727,7 +772,19 @@ export default function WeakPage() {
 
         </div>
 
-        <div className="mb-6 grid grid-cols-2 gap-4">
+        {question.requiresImage && (
+          <div className="mb-4 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4">
+            <p className="text-sm font-semibold text-amber-200">
+              🖼️ この問題は図・記号を使う問題です
+            </p>
+            <p className="mt-1 text-xs leading-5 text-amber-100/70">
+              現在は問題データのみ登録済みです。図画像は後で追加します。
+            </p>
+          </div>
+        )}
+
+        {question.type === "truefalse" ? (
+          <div className="mb-6 grid grid-cols-2 gap-4">
 
           <button
             onClick={() =>
@@ -753,7 +810,56 @@ export default function WeakPage() {
             ×
           </button>
 
-        </div>
+          </div>
+        ) : (
+          <div className="mb-6 space-y-3">
+
+            {(["イ", "ロ", "ハ", "ニ"] as const).map(
+              (choiceKey) => {
+                const choiceText =
+                  question.choices?.[
+                    choiceKey
+                  ] ?? "";
+
+                return (
+                  <button
+                    key={choiceKey}
+                    onClick={() =>
+                      answerQuestion(
+                        choiceKey
+                      )
+                    }
+                    disabled={
+                      selected !== null
+                    }
+                    className={`w-full rounded-2xl border p-4 text-left transition ${
+                      selected === choiceKey
+                        ? choiceKey === question.answer
+                          ? "border-green-400 bg-green-400/10"
+                          : "border-red-400 bg-red-400/10"
+                        : selected !== null &&
+                            choiceKey === question.answer
+                          ? "border-green-400 bg-green-400/10"
+                          : "border-zinc-700 bg-zinc-900 hover:bg-zinc-800"
+                    } disabled:cursor-default`}
+                  >
+                    <div className="flex items-start gap-4">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800 text-lg font-bold">
+                        {choiceKey}
+                      </span>
+
+                      <span className="pt-1 leading-7 text-zinc-100">
+                        {choiceText ||
+                          "（図・記号の選択肢）"}
+                      </span>
+                    </div>
+                  </button>
+                );
+              }
+            )}
+
+          </div>
+        )}
 
         {selected && (
           <div className="rounded-3xl bg-zinc-900 p-6">
@@ -769,6 +875,20 @@ export default function WeakPage() {
             <p className="mb-3">
               正解：
               {question.answer}
+              {question.type === "choice" &&
+                question.choices?.[
+                  question.answer as
+                    "イ" | "ロ" | "ハ" | "ニ"
+                ] && (
+                  <span className="ml-2 text-zinc-400">
+                    {
+                      question.choices[
+                        question.answer as
+                          "イ" | "ロ" | "ハ" | "ニ"
+                      ]
+                    }
+                  </span>
+                )}
             </p>
 
             <p className="mb-6 leading-7 text-zinc-300">

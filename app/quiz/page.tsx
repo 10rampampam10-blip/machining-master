@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { questions, Question } from "../data/question";
+import { questions, Question, QuestionAnswer } from "../data/question";
 
-type Answer = "○" | "×";
+type Answer = QuestionAnswer;
 type StudyMode = "order" | "shuffle";
 type QuestionCount = 5 | 10 | 20 | "all";
 
@@ -19,8 +19,8 @@ type Chapter = {
   id: string;
   name: string;
   icon: string;
-  start: number;
-  end: number;
+  level?: "1級" | "2級";
+  type?: "truefalse" | "choice";
 };
 
 const chapters: Chapter[] = [
@@ -28,110 +28,55 @@ const chapters: Chapter[] = [
     id: "all",
     name: "全範囲",
     icon: "🎯",
-    start: 1,
-    end: 597,
   },
   {
-    id: "machine-gears",
-    name: "機械要素（ねじ・歯車）",
-    icon: "⚙️",
-    start: 1,
-    end: 62,
+    id: "level1-truefalse",
+    name: "1級 真偽法",
+    icon: "⭕",
+    level: "1級",
+    type: "truefalse",
   },
   {
-    id: "machine-other",
-    name: "機械要素（その他の機素）",
-    icon: "🔩",
-    start: 63,
-    end: 116,
+    id: "level1-choice",
+    name: "1級 多肢選一",
+    icon: "🔢",
+    level: "1級",
+    type: "choice",
   },
   {
-    id: "material-1",
-    name: "材料（鉄鋼・非鉄・非金属）",
-    icon: "🧱",
-    start: 117,
-    end: 157,
+    id: "level2-truefalse",
+    name: "2級 真偽法",
+    icon: "⭕",
+    level: "2級",
+    type: "truefalse",
   },
   {
-    id: "material-2",
-    name: "材料（熱処理・材料試験）",
-    icon: "🔥",
-    start: 158,
-    end: 196,
-  },
-  {
-    id: "strength",
-    name: "材料力学",
-    icon: "📐",
-    start: 197,
-    end: 222,
-  },
-  {
-    id: "drawing",
-    name: "製図",
-    icon: "✏️",
-    start: 223,
-    end: 265,
-  },
-  {
-    id: "electric",
-    name: "電気",
-    icon: "⚡",
-    start: 266,
-    end: 297,
-  },
-  {
-    id: "safety",
-    name: "安全衛生",
-    icon: "🦺",
-    start: 298,
-    end: 321,
-  },
-  {
-    id: "oil",
-    name: "切削油剤・潤滑",
-    icon: "🛢️",
-    start: 322,
-    end: 363,
-  },
-  {
-    id: "measurement",
-    name: "工作測定・品質管理",
-    icon: "📏",
-    start: 364,
-    end: 407,
-  },
-  {
-    id: "hydraulic-pneumatic",
-    name: "油圧・空圧",
-    icon: "💨",
-    start: 408,
-    end: 421,
-  },
-  {
-    id: "work-method-1",
-    name: "工作法一般1（けがき・手仕上げ作業）",
-    icon: "🪚",
-    start: 422,
-    end: 474,
-  },
-  {
-    id: "work-method-2",
-    name: "工作法一般2（工具・工作機械など）",
-    icon: "🛠️",
-    start: 475,
-    end: 540,
-  },
-  {
-    id: "work-method-3",
-    name: "工作法一般3（鋳造・鍛造・板金・製かんなど）",
-    icon: "🏭",
-    start: 541,
-    end: 597,
+    id: "level2-choice",
+    name: "2級 多肢選一",
+    icon: "🔢",
+    level: "2級",
+    type: "choice",
   },
 ];
 
+function getQuestionsForChapter(
+  chapter: Chapter
+) {
+  if (chapter.id === "all") {
+    return questions;
+  }
+
+  return questions.filter(
+    (question) =>
+      question.level === chapter.level &&
+      question.type === chapter.type
+  );
+}
+
 export default function QuizPage() {
+  const [subjectSelected, setSubjectSelected] =
+    useState(false);
+
   const [selectedChapter, setSelectedChapter] =
     useState<Chapter | null>(null);
 
@@ -211,11 +156,7 @@ export default function QuizPage() {
     chapter: Chapter
   ) {
     const chapterQuestions =
-      questions.filter(
-        (question) =>
-          question.id >= chapter.start &&
-          question.id <= chapter.end
-      );
+      getQuestionsForChapter(chapter);
 
     const studiedQuestions =
       chapterQuestions.filter(
@@ -287,12 +228,8 @@ export default function QuizPage() {
       }
 
       const filtered =
-        questions.filter(
-          (question) =>
-            question.id >=
-              selectedChapter.start &&
-            question.id <=
-              selectedChapter.end
+        getQuestionsForChapter(
+          selectedChapter
         );
 
       setQuestionCount("all");
@@ -358,12 +295,8 @@ export default function QuizPage() {
     }
 
     let filtered =
-      questions.filter(
-        (question) =>
-          question.id >=
-            selectedChapter.start &&
-          question.id <=
-            selectedChapter.end
+      getQuestionsForChapter(
+        selectedChapter
       );
 
     if (studyMode === "shuffle") {
@@ -588,6 +521,21 @@ export default function QuizPage() {
     setBestStreak(0);
   }
 
+  function backToSubjectSelection() {
+    setSubjectSelected(false);
+    setSelectedChapter(null);
+    setStudyMode(null);
+    setQuestionCount(null);
+    setQuizQuestions([]);
+    setCurrentIndex(0);
+    setSelected(null);
+    setScore(0);
+    setFinished(false);
+    setStreak(0);
+    setBestStreak(0);
+    setAnswerEffect(null);
+  }
+
   function backToChapters() {
     setSelectedChapter(null);
     setStudyMode(null);
@@ -621,7 +569,7 @@ export default function QuizPage() {
       return {
         rank: "A",
         message:
-          "かなり仕上がってる！",
+          "かなり身についてる！",
       };
     }
 
@@ -649,7 +597,131 @@ export default function QuizPage() {
   }
 
   // ─────────────────────────────
-  // 章選択画面
+  // 分野選択画面
+  // ─────────────────────────────
+
+  if (!subjectSelected) {
+    const allStats =
+      getChapterStats(chapters[0]);
+
+    const progress =
+      allStats.total > 0
+        ? Math.round(
+            (allStats.studied /
+              allStats.total) *
+              100
+          )
+        : 0;
+
+    return (
+      <main className="min-h-screen bg-zinc-950 px-6 py-10 text-white">
+
+        <div className="mx-auto w-full max-w-xl">
+
+          <div className="mb-8">
+
+            <p className="mb-2 text-sm text-zinc-400">
+              通常学習
+            </p>
+
+            <h1 className="mb-3 text-3xl font-bold">
+              学習する分野を選択
+            </h1>
+
+            <p className="text-zinc-400">
+              マシニング学習の分野を選ぼう。
+            </p>
+
+          </div>
+
+          <button
+            onClick={() =>
+              setSubjectSelected(true)
+            }
+            className="w-full rounded-3xl bg-white p-6 text-left text-black transition duration-200 hover:scale-[1.01]"
+          >
+
+            <div className="flex items-start justify-between gap-4">
+
+              <div className="flex items-start gap-3">
+
+                <span className="text-3xl">
+                  🏭
+                </span>
+
+                <div>
+
+                  <p className="text-xl font-bold">
+                    機械加工
+                  </p>
+
+                  <p className="mt-1 text-sm text-zinc-600">
+                    1級・2級 / 真偽法・多肢選一
+                  </p>
+
+                </div>
+
+              </div>
+
+              <span className="whitespace-nowrap text-sm text-zinc-600">
+                {allStats.total}問
+              </span>
+
+            </div>
+
+            <div className="mt-5">
+
+              <div className="mb-2 flex items-center justify-between gap-3 text-xs text-zinc-600">
+
+                <span className="font-semibold">
+                  {allStats.accuracy !== null
+                    ? `正答率 ${allStats.accuracy}%`
+                    : "未学習"}
+                </span>
+
+                <span>
+                  {allStats.studied}
+                  {" / "}
+                  {allStats.total}
+                  問 学習済み
+                </span>
+
+              </div>
+
+              <div className="h-2 overflow-hidden rounded-full bg-zinc-300">
+
+                <div
+                  className="h-full rounded-full bg-black transition-all duration-700"
+                  style={{
+                    width: `${progress}%`,
+                  }}
+                />
+
+              </div>
+
+              <p className="mt-2 text-right text-[11px] text-zinc-500">
+                学習進捗 {progress}%
+              </p>
+
+            </div>
+
+          </button>
+
+          <a
+            href="/"
+            className="mt-8 block w-full rounded-2xl bg-zinc-800 py-4 text-center font-semibold"
+          >
+            ホームへ戻る
+          </a>
+
+        </div>
+
+      </main>
+    );
+  }
+
+  // ─────────────────────────────
+  // 機械加工：級・形式選択
   // ─────────────────────────────
 
   if (!selectedChapter) {
@@ -665,189 +737,145 @@ export default function QuizPage() {
             </p>
 
             <h1 className="mb-3 text-3xl font-bold">
-              学習する章を選択
+              🏭 機械加工
             </h1>
 
             <p className="text-zinc-400">
-              正答率を見ながら、
-              苦手な章を集中して勉強しよう。
+              級と問題形式を選択しよう。
             </p>
 
           </div>
 
           <div className="space-y-4">
 
-            {chapters.map(
-              (chapter) => {
-                const chapterStats =
-                  getChapterStats(
-                    chapter
-                  );
+            {chapters
+              .filter(
+                (chapter) =>
+                  chapter.id !== "all"
+              )
+              .map(
+                (chapter) => {
+                  const chapterStats =
+                    getChapterStats(
+                      chapter
+                    );
 
-                const isAll =
-                  chapter.id === "all";
+                  const progress =
+                    chapterStats.total > 0
+                      ? Math.round(
+                          (chapterStats.studied /
+                            chapterStats.total) *
+                            100
+                        )
+                      : 0;
 
-                const progress =
-                  chapterStats.total > 0
-                    ? Math.round(
-                        (chapterStats.studied /
-                          chapterStats.total) *
-                          100
-                      )
-                    : 0;
+                  return (
+                    <button
+                      key={
+                        chapter.id
+                      }
+                      onClick={() =>
+                        selectChapter(
+                          chapter
+                        )
+                      }
+                      className="w-full rounded-3xl bg-zinc-900 p-5 text-left transition duration-200 hover:scale-[1.01] hover:bg-zinc-800"
+                    >
 
-                return (
-                  <button
-                    key={
-                      chapter.id
-                    }
-                    onClick={() =>
-                      selectChapter(
-                        chapter
-                      )
-                    }
-                    className={`w-full rounded-3xl p-5 text-left transition duration-200 hover:scale-[1.01] ${
-                      isAll
-                        ? "bg-white text-black"
-                        : "bg-zinc-900 hover:bg-zinc-800"
-                    }`}
-                  >
+                      <div className="flex items-start justify-between gap-4">
 
-                    <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3">
 
-                      <div className="flex items-start gap-3">
-
-                        <span className="text-2xl">
-                          {
-                            chapter.icon
-                          }
-                        </span>
-
-                        <div>
-                          <p className="font-semibold">
+                          <span className="text-2xl">
                             {
-                              chapter.name
+                              chapter.icon
                             }
-                          </p>
+                          </span>
 
-                          {!isAll && (
-                            <p
-                              className={`mt-1 text-xs ${
-                                isAll
-                                  ? "text-zinc-600"
-                                  : "text-zinc-500"
-                              }`}
-                            >
-                              問題{" "}
+                          <div>
+
+                            <p className="font-semibold">
                               {
-                                chapter.start
-                              }
-                              〜
-                              {
-                                chapter.end
+                                chapter.name
                               }
                             </p>
-                          )}
+
+                            <p className="mt-1 text-xs text-zinc-500">
+                              {chapter.type === "truefalse"
+                                ? "○×で解答"
+                                : "イ・ロ・ハ・ニから選択"}
+                            </p>
+
+                          </div>
+
                         </div>
 
-                      </div>
-
-                      <span
-                        className={`whitespace-nowrap text-sm ${
-                          isAll
-                            ? "text-zinc-600"
-                            : "text-zinc-400"
-                        }`}
-                      >
-                        {
-                          chapterStats.total
-                        }
-                        問
-                      </span>
-
-                    </div>
-
-                    {/* 成績 */}
-
-                    <div className="mt-5">
-
-                      <div
-                        className={`mb-2 flex items-center justify-between gap-3 text-xs ${
-                          isAll
-                            ? "text-zinc-600"
-                            : "text-zinc-400"
-                        }`}
-                      >
-
-                        <span className="font-semibold">
-                          {chapterStats.accuracy !==
-                          null
-                            ? `正答率 ${chapterStats.accuracy}%`
-                            : "未学習"}
-                        </span>
-
-                        <span>
-                          {
-                            chapterStats.studied
-                          }
-                          {" / "}
+                        <span className="whitespace-nowrap text-sm text-zinc-400">
                           {
                             chapterStats.total
                           }
-                          問 学習済み
+                          問
                         </span>
 
                       </div>
 
-                      {/* 学習進捗バー */}
+                      <div className="mt-5">
 
-                      <div
-                        className={`h-2 overflow-hidden rounded-full ${
-                          isAll
-                            ? "bg-zinc-300"
-                            : "bg-zinc-700"
-                        }`}
-                      >
+                        <div className="mb-2 flex items-center justify-between gap-3 text-xs text-zinc-400">
 
-                        <div
-                          className={`h-full rounded-full transition-all duration-700 ${
-                            isAll
-                              ? "bg-black"
-                              : "bg-white"
-                          }`}
-                          style={{
-                            width: `${progress}%`,
-                          }}
-                        />
+                          <span className="font-semibold">
+                            {chapterStats.accuracy !==
+                            null
+                              ? `正答率 ${chapterStats.accuracy}%`
+                              : "未学習"}
+                          </span>
+
+                          <span>
+                            {
+                              chapterStats.studied
+                            }
+                            {" / "}
+                            {
+                              chapterStats.total
+                            }
+                            問 学習済み
+                          </span>
+
+                        </div>
+
+                        <div className="h-2 overflow-hidden rounded-full bg-zinc-700">
+
+                          <div
+                            className="h-full rounded-full bg-white transition-all duration-700"
+                            style={{
+                              width: `${progress}%`,
+                            }}
+                          />
+
+                        </div>
+
+                        <p className="mt-2 text-right text-[11px] text-zinc-600">
+                          学習進捗{" "}
+                          {progress}%
+                        </p>
 
                       </div>
 
-                      <p
-                        className={`mt-2 text-right text-[11px] ${
-                          isAll
-                            ? "text-zinc-500"
-                            : "text-zinc-600"
-                        }`}
-                      >
-                        学習進捗{" "}
-                        {progress}%
-                      </p>
-
-                    </div>
-
-                  </button>
-                );
-              }
-            )}
+                    </button>
+                  );
+                }
+              )}
 
           </div>
 
-          <a
-            href="/"
-            className="mt-8 block w-full rounded-2xl bg-zinc-800 py-4 text-center font-semibold"
+          <button
+            onClick={
+              backToSubjectSelection
+            }
+            className="mt-8 w-full rounded-2xl bg-zinc-800 py-4 font-semibold"
           >
-            ホームへ戻る
-          </a>
+            分野選択へ戻る
+          </button>
 
         </div>
 
@@ -981,7 +1009,7 @@ export default function QuizPage() {
             }
             className="mt-8 w-full rounded-2xl bg-zinc-800 py-4 font-semibold"
           >
-            章選択へ戻る
+            問題選択へ戻る
           </button>
 
         </div>
@@ -999,9 +1027,9 @@ export default function QuizPage() {
     !questionCount
   ) {
     const totalCount =
-      selectedChapter.end -
-      selectedChapter.start +
-      1;
+      getQuestionsForChapter(
+        selectedChapter
+      ).length;
 
     const countOptions =
       [5, 10, 20].filter(
@@ -1219,7 +1247,7 @@ export default function QuizPage() {
               }
               className="w-full rounded-2xl bg-zinc-800 py-4 font-semibold"
             >
-              別の章を選ぶ
+              級・形式を変更
             </button>
 
           </div>
@@ -1407,10 +1435,17 @@ export default function QuizPage() {
 
         </div>
 
-        <p className="mb-3 text-sm text-zinc-500">
-          問題{" "}
-          {question.id}
-        </p>
+        <div className="mb-3 flex items-center justify-between gap-3 text-sm text-zinc-500">
+          <p>
+            問題 {question.sourceQuestionNo}
+          </p>
+
+          <span className="rounded-full bg-zinc-900 px-3 py-1 text-xs">
+            {question.type === "truefalse"
+              ? "真偽法"
+              : "多肢選一"}
+          </span>
+        </div>
 
         <div
           className={`mb-4 rounded-3xl bg-zinc-900 p-6 transition ${
@@ -1428,6 +1463,17 @@ export default function QuizPage() {
           </p>
 
         </div>
+
+        {question.requiresImage && (
+          <div className="mb-4 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4">
+            <p className="text-sm font-semibold text-amber-200">
+              🖼️ この問題は図・記号を使う問題です
+            </p>
+            <p className="mt-1 text-xs leading-5 text-amber-100/70">
+              現在は問題データのみ登録済みです。図画像は後で追加します。
+            </p>
+          </div>
+        )}
 
         <button
           onClick={() =>
@@ -1448,37 +1494,83 @@ export default function QuizPage() {
 
         </button>
 
-        <div className="mb-6 grid grid-cols-2 gap-4">
+        {question.type === "truefalse" ? (
+          <div className="mb-6 grid grid-cols-2 gap-4">
 
-          <button
-            onClick={() =>
-              answerQuestion(
-                "○"
-              )
-            }
-            disabled={
-              selected !== null
-            }
-            className="rounded-2xl bg-zinc-800 py-6 text-3xl font-bold transition hover:scale-[1.02] hover:bg-zinc-700 disabled:opacity-50"
-          >
-            ○
-          </button>
+            <button
+              onClick={() =>
+                answerQuestion("○")
+              }
+              disabled={
+                selected !== null
+              }
+              className="rounded-2xl bg-zinc-800 py-6 text-3xl font-bold transition hover:scale-[1.02] hover:bg-zinc-700 disabled:opacity-50"
+            >
+              ○
+            </button>
 
-          <button
-            onClick={() =>
-              answerQuestion(
-                "×"
-              )
-            }
-            disabled={
-              selected !== null
-            }
-            className="rounded-2xl bg-zinc-800 py-6 text-3xl font-bold transition hover:scale-[1.02] hover:bg-zinc-700 disabled:opacity-50"
-          >
-            ×
-          </button>
+            <button
+              onClick={() =>
+                answerQuestion("×")
+              }
+              disabled={
+                selected !== null
+              }
+              className="rounded-2xl bg-zinc-800 py-6 text-3xl font-bold transition hover:scale-[1.02] hover:bg-zinc-700 disabled:opacity-50"
+            >
+              ×
+            </button>
 
-        </div>
+          </div>
+        ) : (
+          <div className="mb-6 space-y-3">
+
+            {(["イ", "ロ", "ハ", "ニ"] as const).map(
+              (choiceKey) => {
+                const choiceText =
+                  question.choices?.[
+                    choiceKey
+                  ] ?? "";
+
+                return (
+                  <button
+                    key={choiceKey}
+                    onClick={() =>
+                      answerQuestion(
+                        choiceKey
+                      )
+                    }
+                    disabled={
+                      selected !== null
+                    }
+                    className={`w-full rounded-2xl border p-4 text-left transition ${
+                      selected === choiceKey
+                        ? choiceKey === question.answer
+                          ? "border-green-400 bg-green-400/10"
+                          : "border-red-400 bg-red-400/10"
+                        : selected !== null &&
+                            choiceKey === question.answer
+                          ? "border-green-400 bg-green-400/10"
+                          : "border-zinc-700 bg-zinc-900 hover:bg-zinc-800"
+                    } disabled:cursor-default`}
+                  >
+                    <div className="flex items-start gap-4">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800 text-lg font-bold">
+                        {choiceKey}
+                      </span>
+
+                      <span className="pt-1 leading-7 text-zinc-100">
+                        {choiceText ||
+                          "（図・記号の選択肢）"}
+                      </span>
+                    </div>
+                  </button>
+                );
+              }
+            )}
+
+          </div>
+        )}
 
         {selected && (
           <div className="rounded-3xl bg-zinc-900 p-6">
@@ -1505,6 +1597,20 @@ export default function QuizPage() {
               {
                 question.answer
               }
+              {question.type === "choice" &&
+                question.choices?.[
+                  question.answer as
+                    "イ" | "ロ" | "ハ" | "ニ"
+                ] && (
+                  <span className="ml-2 text-zinc-400">
+                    {
+                      question.choices[
+                        question.answer as
+                          "イ" | "ロ" | "ハ" | "ニ"
+                      ]
+                    }
+                  </span>
+                )}
             </p>
 
             <p className="mb-6 leading-7 text-zinc-300">
