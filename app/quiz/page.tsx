@@ -21,7 +21,36 @@ type Chapter = {
   icon: string;
   level?: "1級" | "2級";
   type?: "truefalse" | "choice";
+  section?: string;
 };
+
+type SectionOption = {
+  id: string;
+  name: string;
+  icon: string;
+  section: string;
+};
+
+const sections: SectionOption[] = [
+  {
+    id: "common",
+    name: "機械加工",
+    icon: "🏭",
+    section: "共通問題",
+  },
+  {
+    id: "boring",
+    name: "横中ぐり盤 ジグ中ぐり盤",
+    icon: "⚙️",
+    section: "横中ぐり盤 ジグ中ぐり盤",
+  },
+  {
+    id: "nc-machining",
+    name: "NC工作機械 マシニングセンタ",
+    icon: "🧭",
+    section: "NC工作機械 マシニングセンタ",
+  },
+];
 
 const chapters: Chapter[] = [
   {
@@ -69,13 +98,15 @@ function getQuestionsForChapter(
   return questions.filter(
     (question) =>
       question.level === chapter.level &&
-      question.type === chapter.type
+      question.type === chapter.type &&
+      (!chapter.section ||
+        question.section === chapter.section)
   );
 }
 
 export default function QuizPage() {
-  const [subjectSelected, setSubjectSelected] =
-    useState(false);
+  const [selectedSection, setSelectedSection] =
+    useState<SectionOption | null>(null);
 
   const [selectedChapter, setSelectedChapter] =
     useState<Chapter | null>(null);
@@ -521,8 +552,8 @@ export default function QuizPage() {
     setBestStreak(0);
   }
 
-  function backToSubjectSelection() {
-    setSubjectSelected(false);
+  function backToSections() {
+    setSelectedSection(null);
     setSelectedChapter(null);
     setStudyMode(null);
     setQuestionCount(null);
@@ -597,22 +628,11 @@ export default function QuizPage() {
   }
 
   // ─────────────────────────────
-  // 分野選択画面
+  // ジャンル選択画面
   // ─────────────────────────────
 
-  if (!subjectSelected) {
-    const allStats =
-      getChapterStats(chapters[0]);
 
-    const progress =
-      allStats.total > 0
-        ? Math.round(
-            (allStats.studied /
-              allStats.total) *
-              100
-          )
-        : 0;
-
+  if (!selectedSection) {
     return (
       <main className="min-h-screen bg-zinc-950 px-6 py-10 text-white">
 
@@ -625,87 +645,144 @@ export default function QuizPage() {
             </p>
 
             <h1 className="mb-3 text-3xl font-bold">
-              学習する分野を選択
+              学習するジャンルを選択
             </h1>
 
             <p className="text-zinc-400">
-              マシニング学習の分野を選ぼう。
+              学習したいジャンルを選ぼう。
             </p>
 
           </div>
 
-          <button
-            onClick={() =>
-              setSubjectSelected(true)
-            }
-            className="w-full rounded-3xl bg-white p-6 text-left text-black transition duration-200 hover:scale-[1.01]"
-          >
+          <div className="space-y-4">
 
-            <div className="flex items-start justify-between gap-4">
+            {sections.map((section) => {
+              const sectionQuestions =
+                questions.filter(
+                  (question) =>
+                    question.section ===
+                    section.section
+                );
 
-              <div className="flex items-start gap-3">
+              const attempts =
+                sectionQuestions.reduce(
+                  (total, question) =>
+                    total +
+                    (stats[question.id]?.attempts ?? 0),
+                  0
+                );
 
-                <span className="text-3xl">
-                  🏭
-                </span>
+              const correct =
+                sectionQuestions.reduce(
+                  (total, question) =>
+                    total +
+                    (stats[question.id]?.correct ?? 0),
+                  0
+                );
 
-                <div>
+              const studied =
+                sectionQuestions.filter(
+                  (question) =>
+                    stats[question.id] &&
+                    stats[question.id].attempts > 0
+                ).length;
 
-                  <p className="text-xl font-bold">
-                    機械加工
-                  </p>
+              const accuracy =
+                attempts > 0
+                  ? Math.round(
+                      (correct / attempts) * 100
+                    )
+                  : null;
 
-                  <p className="mt-1 text-sm text-zinc-600">
-                    1級・2級 / 真偽法・多肢選一
-                  </p>
+              const progress =
+                sectionQuestions.length > 0
+                  ? Math.round(
+                      (studied /
+                        sectionQuestions.length) *
+                        100
+                    )
+                  : 0;
 
-                </div>
+              return (
+                <button
+                  key={section.id}
+                  onClick={() =>
+                    setSelectedSection(section)
+                  }
+                  className="w-full rounded-3xl bg-zinc-900 p-5 text-left transition duration-200 hover:scale-[1.01] hover:bg-zinc-800"
+                >
 
-              </div>
+                  <div className="flex items-start justify-between gap-4">
 
-              <span className="whitespace-nowrap text-sm text-zinc-600">
-                {allStats.total}問
-              </span>
+                    <div className="flex items-start gap-3">
 
-            </div>
+                      <span className="text-2xl">
+                        {section.icon}
+                      </span>
 
-            <div className="mt-5">
+                      <div>
 
-              <div className="mb-2 flex items-center justify-between gap-3 text-xs text-zinc-600">
+                        <p className="font-semibold">
+                          {section.name}
+                        </p>
 
-                <span className="font-semibold">
-                  {allStats.accuracy !== null
-                    ? `正答率 ${allStats.accuracy}%`
-                    : "未学習"}
-                </span>
+                        <p className="mt-1 text-xs text-zinc-500">
+                          {section.id === "common"
+                            ? "1級・2級 / 真偽法・多肢選一"
+                            : "1級・2級 / 真偽法"}
+                        </p>
 
-                <span>
-                  {allStats.studied}
-                  {" / "}
-                  {allStats.total}
-                  問 学習済み
-                </span>
+                      </div>
 
-              </div>
+                    </div>
 
-              <div className="h-2 overflow-hidden rounded-full bg-zinc-300">
+                    <span className="whitespace-nowrap text-sm text-zinc-400">
+                      {sectionQuestions.length}問
+                    </span>
 
-                <div
-                  className="h-full rounded-full bg-black transition-all duration-700"
-                  style={{
-                    width: `${progress}%`,
-                  }}
-                />
+                  </div>
 
-              </div>
+                  <div className="mt-5">
 
-              <p className="mt-2 text-right text-[11px] text-zinc-500">
-                学習進捗 {progress}%
-              </p>
+                    <div className="mb-2 flex items-center justify-between gap-3 text-xs text-zinc-400">
 
-            </div>
+                      <span className="font-semibold">
+                        {accuracy !== null
+                          ? `正答率 ${accuracy}%`
+                          : "未学習"}
+                      </span>
 
-          </button>
+                      <span>
+                        {studied}
+                        {" / "}
+                        {sectionQuestions.length}
+                        問 学習済み
+                      </span>
+
+                    </div>
+
+                    <div className="h-2 overflow-hidden rounded-full bg-zinc-700">
+
+                      <div
+                        className="h-full rounded-full bg-white transition-all duration-700"
+                        style={{
+                          width: `${progress}%`,
+                        }}
+                      />
+
+                    </div>
+
+                    <p className="mt-2 text-right text-[11px] text-zinc-600">
+                      学習進捗 {progress}%
+                    </p>
+
+                  </div>
+
+                </button>
+              );
+            })}
+
+          </div>
 
           <a
             href="/"
@@ -721,10 +798,21 @@ export default function QuizPage() {
   }
 
   // ─────────────────────────────
-  // 機械加工：級・形式選択
+  // 級・形式選択
   // ─────────────────────────────
 
   if (!selectedChapter) {
+    const availableChapters = chapters
+      .filter((chapter) => chapter.id !== "all")
+      .map((chapter) => ({
+        ...chapter,
+        section: selectedSection.section,
+      }))
+      .filter(
+        (chapter) =>
+          getQuestionsForChapter(chapter).length > 0
+      );
+
     return (
       <main className="min-h-screen bg-zinc-950 px-6 py-10 text-white">
 
@@ -737,7 +825,8 @@ export default function QuizPage() {
             </p>
 
             <h1 className="mb-3 text-3xl font-bold">
-              🏭 機械加工
+              {selectedSection.icon}{" "}
+              {selectedSection.name}
             </h1>
 
             <p className="text-zinc-400">
@@ -748,133 +837,107 @@ export default function QuizPage() {
 
           <div className="space-y-4">
 
-            {chapters
-              .filter(
-                (chapter) =>
-                  chapter.id !== "all"
-              )
-              .map(
-                (chapter) => {
-                  const chapterStats =
-                    getChapterStats(
-                      chapter
-                    );
+            {availableChapters.map(
+              (chapter) => {
+                const chapterStats =
+                  getChapterStats(chapter);
 
-                  const progress =
-                    chapterStats.total > 0
-                      ? Math.round(
-                          (chapterStats.studied /
-                            chapterStats.total) *
-                            100
-                        )
-                      : 0;
+                const progress =
+                  chapterStats.total > 0
+                    ? Math.round(
+                        (chapterStats.studied /
+                          chapterStats.total) *
+                          100
+                      )
+                    : 0;
 
-                  return (
-                    <button
-                      key={
-                        chapter.id
-                      }
-                      onClick={() =>
-                        selectChapter(
-                          chapter
-                        )
-                      }
-                      className="w-full rounded-3xl bg-zinc-900 p-5 text-left transition duration-200 hover:scale-[1.01] hover:bg-zinc-800"
-                    >
+                return (
+                  <button
+                    key={chapter.id}
+                    onClick={() =>
+                      selectChapter(chapter)
+                    }
+                    className="w-full rounded-3xl bg-zinc-900 p-5 text-left transition duration-200 hover:scale-[1.01] hover:bg-zinc-800"
+                  >
 
-                      <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start justify-between gap-4">
 
-                        <div className="flex items-start gap-3">
+                      <div className="flex items-start gap-3">
 
-                          <span className="text-2xl">
-                            {
-                              chapter.icon
-                            }
-                          </span>
+                        <span className="text-2xl">
+                          {chapter.icon}
+                        </span>
 
-                          <div>
+                        <div>
 
-                            <p className="font-semibold">
-                              {
-                                chapter.name
-                              }
-                            </p>
+                          <p className="font-semibold">
+                            {chapter.name}
+                          </p>
 
-                            <p className="mt-1 text-xs text-zinc-500">
-                              {chapter.type === "truefalse"
-                                ? "○×で解答"
-                                : "イ・ロ・ハ・ニから選択"}
-                            </p>
-
-                          </div>
+                          <p className="mt-1 text-xs text-zinc-500">
+                            {chapter.type === "truefalse"
+                              ? "○×で解答"
+                              : "イ・ロ・ハ・ニから選択"}
+                          </p>
 
                         </div>
 
-                        <span className="whitespace-nowrap text-sm text-zinc-400">
-                          {
-                            chapterStats.total
-                          }
-                          問
+                      </div>
+
+                      <span className="whitespace-nowrap text-sm text-zinc-400">
+                        {chapterStats.total}問
+                      </span>
+
+                    </div>
+
+                    <div className="mt-5">
+
+                      <div className="mb-2 flex items-center justify-between gap-3 text-xs text-zinc-400">
+
+                        <span className="font-semibold">
+                          {chapterStats.accuracy !== null
+                            ? `正答率 ${chapterStats.accuracy}%`
+                            : "未学習"}
+                        </span>
+
+                        <span>
+                          {chapterStats.studied}
+                          {" / "}
+                          {chapterStats.total}
+                          問 学習済み
                         </span>
 
                       </div>
 
-                      <div className="mt-5">
+                      <div className="h-2 overflow-hidden rounded-full bg-zinc-700">
 
-                        <div className="mb-2 flex items-center justify-between gap-3 text-xs text-zinc-400">
-
-                          <span className="font-semibold">
-                            {chapterStats.accuracy !==
-                            null
-                              ? `正答率 ${chapterStats.accuracy}%`
-                              : "未学習"}
-                          </span>
-
-                          <span>
-                            {
-                              chapterStats.studied
-                            }
-                            {" / "}
-                            {
-                              chapterStats.total
-                            }
-                            問 学習済み
-                          </span>
-
-                        </div>
-
-                        <div className="h-2 overflow-hidden rounded-full bg-zinc-700">
-
-                          <div
-                            className="h-full rounded-full bg-white transition-all duration-700"
-                            style={{
-                              width: `${progress}%`,
-                            }}
-                          />
-
-                        </div>
-
-                        <p className="mt-2 text-right text-[11px] text-zinc-600">
-                          学習進捗{" "}
-                          {progress}%
-                        </p>
+                        <div
+                          className="h-full rounded-full bg-white transition-all duration-700"
+                          style={{
+                            width: `${progress}%`,
+                          }}
+                        />
 
                       </div>
 
-                    </button>
-                  );
-                }
-              )}
+                      <p className="mt-2 text-right text-[11px] text-zinc-600">
+                        学習進捗 {progress}%
+                      </p>
+
+                    </div>
+
+                  </button>
+                );
+              }
+            )}
 
           </div>
 
           <button
-            onClick={
-              backToSubjectSelection
-            }
+            onClick={backToSections}
             className="mt-8 w-full rounded-2xl bg-zinc-800 py-4 font-semibold"
           >
-            分野選択へ戻る
+            ジャンル選択へ戻る
           </button>
 
         </div>
@@ -1009,7 +1072,7 @@ export default function QuizPage() {
             }
             className="mt-8 w-full rounded-2xl bg-zinc-800 py-4 font-semibold"
           >
-            問題選択へ戻る
+            級・形式選択へ戻る
           </button>
 
         </div>
