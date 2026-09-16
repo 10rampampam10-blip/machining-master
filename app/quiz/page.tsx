@@ -100,6 +100,33 @@ const chapters: Chapter[] = [
   },
 ];
 
+function matchesSection(
+  questionSection: string,
+  targetSection?: string
+) {
+  if (!targetSection) {
+    return true;
+  }
+
+  // 共通問題は他ジャンルと混ざらないよう完全一致
+  if (targetSection === "共通問題") {
+    return questionSection === "共通問題";
+  }
+
+  // 「研削盤」「研削盤 真偽法」「研削盤（1級）」のように
+  // section 名に補足が付いていても同じジャンルとして扱う
+  const normalize = (value: string) =>
+    value
+      .replace(/\s+/g, "")
+      .replace(/[()（）・･]/g, "")
+      .toLowerCase();
+
+  const q = normalize(questionSection);
+  const t = normalize(targetSection);
+
+  return q === t || q.includes(t) || t.includes(q);
+}
+
 function getQuestionsForChapter(
   chapter: Chapter
 ) {
@@ -111,8 +138,10 @@ function getQuestionsForChapter(
     (question) =>
       question.level === chapter.level &&
       question.type === chapter.type &&
-      (!chapter.section ||
-        question.section === chapter.section)
+      matchesSection(
+        question.section,
+        chapter.section
+      )
   );
 }
 
@@ -672,8 +701,10 @@ export default function QuizPage() {
               const sectionQuestions =
                 questions.filter(
                   (question) =>
-                    question.section ===
-                    section.section
+                    matchesSection(
+                      question.section,
+                      section.section
+                    )
                 );
 
               const attempts =
