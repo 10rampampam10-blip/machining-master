@@ -50,6 +50,18 @@ const sections: SectionOption[] = [
     icon: "🧭",
     section: "NC工作機械 マシニングセンタ",
   },
+  {
+    id: "lathe",
+    name: "旋盤",
+    icon: "🛠️",
+    section: "旋盤",
+  },
+  {
+    id: "grinding",
+    name: "研削盤",
+    icon: "🪨",
+    section: "研削盤",
+  },
 ];
 
 const chapters: Chapter[] = [
