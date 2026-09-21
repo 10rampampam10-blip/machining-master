@@ -62,6 +62,18 @@ const sections: SectionOption[] = [
     icon: "🪨",
     section: "研削盤",
   },
+  {
+    id: "drilling",
+    name: "ボール盤 ドリル タップ リーマ",
+    icon: "🕳️",
+    section: "ボール盤 ドリル タップ リーマ",
+  },
+  {
+    id: "gear",
+    name: "歯車",
+    icon: "⚙️",
+    section: "歯車",
+  },
 ];
 
 const chapters: Chapter[] = [
